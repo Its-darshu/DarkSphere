@@ -27,6 +27,12 @@ export default function HomePage() {
 
     // Validation for registration
     if (mode === 'register') {
+      if (!formData.securityKey || formData.securityKey.trim() === '') {
+        setError('🔑 Security key is required for registration')
+        setLoading(false)
+        return
+      }
+      
       if (formData.password !== formData.confirmPassword) {
         setError('Passwords do not match')
         setLoading(false)
@@ -39,11 +45,7 @@ export default function HomePage() {
         return
       }
       
-      if (!formData.securityKey) {
-        setError('Security key is required for registration')
-        setLoading(false)
-        return
-      }
+      console.log('🔑 Validating security key:', formData.securityKey)
     }
 
     try {
@@ -65,7 +67,18 @@ export default function HomePage() {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || 'Something went wrong')
+        // Better error messages for security key issues
+        if (data.error.includes('Invalid security key')) {
+          setError('🔑 Security key not found. Please contact an admin for a valid key.')
+        } else if (data.error.includes('already been used')) {
+          setError('🔑 This security key has already been used. Please request a new one.')
+        } else if (data.error.includes('Username already taken')) {
+          setError('👤 Username is already taken. Please choose another.')
+        } else if (data.error.includes('Email already registered')) {
+          setError('📧 Email is already registered. Please use a different email.')
+        } else {
+          setError(data.error || 'Something went wrong')
+        }
         setLoading(false)
         return
       }
