@@ -61,15 +61,31 @@ export default function Dashboard() {
 
   // Load user data and posts on component mount
   useEffect(() => {
+    console.log('🏠 Dashboard - Loading...')
+    
     const isLoggedIn = localStorage.getItem('isLoggedIn')
     const userData = localStorage.getItem('user')
     
+    console.log('🔍 Dashboard Debug:')
+    console.log('  - isLoggedIn:', isLoggedIn)
+    console.log('  - userData exists:', !!userData)
+    console.log('  - localStorage available:', typeof(Storage) !== "undefined")
+    
     if (!isLoggedIn || !userData) {
+      console.log('❌ Not logged in, redirecting to login')
       router.push('/')
       return
     }
     
-    setUser(JSON.parse(userData))
+    try {
+      const user = JSON.parse(userData)
+      console.log('✅ User data parsed:', user.username)
+      setUser(user)
+    } catch (error) {
+      console.error('❌ Error parsing user data:', error)
+      router.push('/')
+      return
+    }
     
     // Load posts from localStorage or create sample posts
     const savedPosts = localStorage.getItem('posts')

@@ -21,6 +21,32 @@ const verifyPassword = (password: string, hash: string): boolean => {
   return hashPassword(password) === hash
 }
 
+// Mobile localStorage helper functions
+const setStorageItem = (key: string, value: string): boolean => {
+  try {
+    localStorage.setItem(key, value)
+    // Verify it was actually set
+    const stored = localStorage.getItem(key)
+    if (stored !== value) {
+      console.warn('⚠️ localStorage verification failed for key:', key)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error('❌ localStorage setItem failed:', error)
+    return false
+  }
+}
+
+const getStorageItem = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key)
+  } catch (error) {
+    console.error('❌ localStorage getItem failed:', error)
+    return null
+  }
+}
+
 export default function HomePage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState<'key' | 'register' | 'login'>('key')
@@ -191,8 +217,10 @@ export default function HomePage() {
     setError('')
     setLoading(true)
     
-    // Add mobile debugging
-    console.log('Login attempt started on:', navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop')
+    console.log('🔍 Login Debug - Start')
+    console.log('📱 Device:', navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop')
+    console.log('📧 Email:', loginForm.email)
+    console.log('🔑 Password length:', loginForm.password.length)
     
     if (!loginForm.email || !loginForm.password) {
       setError('Please fill in all fields')
@@ -201,49 +229,105 @@ export default function HomePage() {
     }
     
     try {
+      // Debug localStorage
+      console.log('💾 Checking localStorage support...')
+      console.log('💾 localStorage available:', typeof(Storage) !== "undefined")
+      
       // Check if user exists in registered users list
-      const adminUsersList = localStorage.getItem('adminUsersList')
+      const adminUsersList = getStorageItem('adminUsersList')
+      console.log('👥 Users list found:', !!adminUsersList)
+      console.log('👥 Users list length:', adminUsersList ? JSON.parse(adminUsersList).length : 0)
+      
       let registeredUsers = []
       
       if (adminUsersList) {
         registeredUsers = JSON.parse(adminUsersList)
+        console.log('👥 Parsed users:', registeredUsers.length)
+      } else {
+        console.log('❌ No users list found in localStorage')
+        setError('No users found. Please register first.')
+        setLoading(false)
+        return
       }
       
       // Find user by email
       const existingUser = registeredUsers.find((user: any) => user.email === loginForm.email)
+      console.log('🔍 User found:', !!existingUser)
       
       if (!existingUser) {
+        console.log('❌ User not found with email:', loginForm.email)
+        console.log('📧 Available emails:', registeredUsers.map((u: any) => u.email))
         setError('Invalid email or password. Please check your credentials or register first.')
         setLoading(false)
         return
       }
       
+      console.log('👤 Found user:', existingUser.username)
+      
+      // Debug password verification
+      const hashedInput = hashPassword(loginForm.password)
+      const storedHash = existingUser.passwordHash
+      console.log('🔐 Password hash match:', hashedInput === storedHash)
+      
       // Verify password
       if (!verifyPassword(loginForm.password, existingUser.passwordHash)) {
+        console.log('❌ Password verification failed')
         setError('Invalid email or password. Please check your credentials.')
         setLoading(false)
         return
       }
       
+      console.log('✅ Password verified successfully')
+      
       // Add delay for better UX on mobile
       setTimeout(() => {
-        localStorage.setItem('user', JSON.stringify({
-          username: existingUser.username,
-          email: existingUser.email,
-          fullName: existingUser.fullName,
-          type: existingUser.type,
-          id: existingUser.id
-        }))
-        
-        localStorage.setItem('isLoggedIn', 'true')
-        
-        console.log('Login successful, redirecting...')
-        router.push('/dashboard')
-        setLoading(false)
-      }, 800) // Reduced delay for mobile
+        try {
+          const userToStore = {
+            username: existingUser.username,
+            email: existingUser.email,
+            fullName: existingUser.fullName,
+            type: existingUser.type,
+            id: existingUser.id
+          }
+          
+          console.log('💾 Storing user data:', userToStore)
+          
+          const userStored = setStorageItem('user', JSON.stringify(userToStore))
+          const loginStored = setStorageItem('isLoggedIn', 'true')
+          
+          if (!userStored || !loginStored) {
+            console.error('❌ Failed to store login data')
+            setError('Login storage failed. Please try again.')
+            setLoading(false)
+            return
+          }
+          
+          console.log('✅ User data stored successfully')
+          console.log('🚀 Redirecting to dashboard...')
+          
+          // Double-check storage worked before redirect
+          const verifyUser = getStorageItem('user')
+          const verifyLogin = getStorageItem('isLoggedIn')
+          
+          if (!verifyUser || !verifyLogin) {
+            console.error('❌ Storage verification failed before redirect')
+            setError('Login storage failed. Please try again.')
+            setLoading(false)
+            return
+          }
+          
+          console.log('✅ Storage verified, proceeding with redirect')
+          router.push('/dashboard')
+          setLoading(false)
+        } catch (storageError) {
+          console.error('❌ Storage error:', storageError)
+          setError('Login storage failed. Please try again.')
+          setLoading(false)
+        }
+      }, 500) // Reduced delay
       
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('❌ Login error:', error)
       setError('Login failed. Please try again.')
       setLoading(false)
     }
