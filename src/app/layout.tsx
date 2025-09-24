@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   description: 'A modern social platform for sharing thoughts and connecting with others',
   keywords: ['social', 'platform', 'thoughts', 'community'],
   authors: [{ name: 'DarkSphere Team' }],
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
 }
 
 export default function RootLayout({

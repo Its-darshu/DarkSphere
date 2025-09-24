@@ -10,6 +10,30 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+    touch-action: manipulation; /* Better touch handling */
+  }
+  
+  /* Mobile input improvements */
+  input, button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  
+  /* Better mobile touch targets */
+  button, input[type="button"], input[type="submit"] {
+    min-height: 44px; /* Apple's recommended minimum */
+    touch-action: manipulation;
+  }
+  
+  /* Prevent zoom on mobile inputs */
+  @media screen and (max-width: 768px) {
+    input[type="email"], 
+    input[type="password"], 
+    input[type="text"] {
+      font-size: 16px !important; /* Prevents zoom on iOS */
+    }
   }
 }
 

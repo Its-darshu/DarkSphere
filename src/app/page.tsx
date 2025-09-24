@@ -191,48 +191,62 @@ export default function HomePage() {
     setError('')
     setLoading(true)
     
+    // Add mobile debugging
+    console.log('Login attempt started on:', navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop')
+    
     if (!loginForm.email || !loginForm.password) {
       setError('Please fill in all fields')
       setLoading(false)
       return
     }
     
-    // Check if user exists in registered users list
-    const adminUsersList = localStorage.getItem('adminUsersList')
-    let registeredUsers = []
-    
-    if (adminUsersList) {
-      registeredUsers = JSON.parse(adminUsersList)
-    }
-    
-    // Find user by email
-    const existingUser = registeredUsers.find((user: any) => user.email === loginForm.email)
-    
-    if (!existingUser) {
-      setError('Invalid email or password. Please check your credentials or register first.')
-      setLoading(false)
-      return
-    }
-    
-    // Verify password
-    if (!verifyPassword(loginForm.password, existingUser.passwordHash)) {
-      setError('Invalid email or password. Please check your credentials.')
-      setLoading(false)
-      return
-    }
-    setTimeout(() => {
-      localStorage.setItem('user', JSON.stringify({
-        username: existingUser.username,
-        email: existingUser.email,
-        fullName: existingUser.fullName,
-        type: existingUser.type,
-        id: existingUser.id
-      }))
+    try {
+      // Check if user exists in registered users list
+      const adminUsersList = localStorage.getItem('adminUsersList')
+      let registeredUsers = []
       
-      localStorage.setItem('isLoggedIn', 'true')
-      router.push('/dashboard')
+      if (adminUsersList) {
+        registeredUsers = JSON.parse(adminUsersList)
+      }
+      
+      // Find user by email
+      const existingUser = registeredUsers.find((user: any) => user.email === loginForm.email)
+      
+      if (!existingUser) {
+        setError('Invalid email or password. Please check your credentials or register first.')
+        setLoading(false)
+        return
+      }
+      
+      // Verify password
+      if (!verifyPassword(loginForm.password, existingUser.passwordHash)) {
+        setError('Invalid email or password. Please check your credentials.')
+        setLoading(false)
+        return
+      }
+      
+      // Add delay for better UX on mobile
+      setTimeout(() => {
+        localStorage.setItem('user', JSON.stringify({
+          username: existingUser.username,
+          email: existingUser.email,
+          fullName: existingUser.fullName,
+          type: existingUser.type,
+          id: existingUser.id
+        }))
+        
+        localStorage.setItem('isLoggedIn', 'true')
+        
+        console.log('Login successful, redirecting...')
+        router.push('/dashboard')
+        setLoading(false)
+      }, 800) // Reduced delay for mobile
+      
+    } catch (error) {
+      console.error('Login error:', error)
+      setError('Login failed. Please try again.')
       setLoading(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -410,9 +424,11 @@ export default function HomePage() {
                   <label className="block text-sm font-medium text-minimal-white mb-1">Email</label>
                   <input
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
                     value={loginForm.email}
                     onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
-                    className="w-full px-4 py-3 bg-minimal-black border border-minimal-gray-800 text-minimal-white placeholder-minimal-gray-400 focus:outline-none focus:border-minimal-white transition-colors"
+                    className="w-full px-4 py-3 bg-minimal-black border border-minimal-gray-800 text-minimal-white placeholder-minimal-gray-400 focus:outline-none focus:border-minimal-white transition-colors text-base"
                     placeholder="Enter your email"
                   />
                 </div>
@@ -422,11 +438,12 @@ export default function HomePage() {
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
                       value={loginForm.password}
                       onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
-                      className="w-full px-4 py-3 pr-10 bg-minimal-black border border-minimal-gray-800 text-minimal-white placeholder-minimal-gray-400 focus:outline-none focus:border-minimal-white transition-colors"
+                      className="w-full px-4 py-3 pr-10 bg-minimal-black border border-minimal-gray-800 text-minimal-white placeholder-minimal-gray-400 focus:outline-none focus:border-minimal-white transition-colors text-base"
                       placeholder="Enter your password"
-                      onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                      onKeyPress={(e) => e.key === 'Enter' && !loading && handleLogin()}
                     />
                     <button
                       type="button"
@@ -447,8 +464,9 @@ export default function HomePage() {
               
               <button
                 onClick={handleLogin}
+                onTouchEnd={handleLogin} // Add touch support for mobile
                 disabled={loading}
-                className="w-full bg-minimal-white text-minimal-black hover:bg-minimal-gray-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium py-3 px-4 transition-colors"
+                className="w-full bg-minimal-white text-minimal-black hover:bg-minimal-gray-200 active:bg-minimal-gray-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium py-3 px-4 transition-colors touch-manipulation"
               >
                 {loading ? 'Signing In...' : 'Sign In'}
               </button>
