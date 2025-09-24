@@ -73,6 +73,33 @@ export default function HomePage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Initialize users if none exist
+  const initializeUsers = () => {
+    const users = [
+      {
+        username: 'admin',
+        email: 'admin@darksphere.com',
+        fullName: 'Admin User',
+        type: 'admin',
+        id: 'admin-001',
+        createdAt: new Date(),
+        passwordHash: hashPassword('admin123')
+      },
+      {
+        username: 'testuser', 
+        email: 'user@darksphere.com',
+        fullName: 'Test User',
+        type: 'user',
+        id: 'user-001',
+        createdAt: new Date(),
+        passwordHash: hashPassword('user123')
+      }
+    ]
+    
+    setStorageItem('adminUsersList', JSON.stringify(users))
+    setError('✅ Demo users created! Try: admin@darksphere.com / admin123')
+  }
+
   const validateSecurityKey = () => {
     setError('')
     if (!securityKey.trim()) {
@@ -245,9 +272,43 @@ export default function HomePage() {
         console.log('👥 Parsed users:', registeredUsers.length)
       } else {
         console.log('❌ No users list found in localStorage')
-        setError('No users found. Please register first.')
-        setLoading(false)
-        return
+        console.log('🔧 Creating default admin user for mobile...')
+        
+        // Create default admin user if none exist (mobile fallback)
+        const defaultAdmin = {
+          username: 'admin',
+          email: 'admin@darksphere.com', 
+          fullName: 'Admin User',
+          type: 'admin',
+          id: 'default-admin-001',
+          createdAt: new Date(),
+          passwordHash: hashPassword('admin123') // Default password
+        }
+        
+        const defaultUser = {
+          username: 'user',
+          email: 'user@darksphere.com',
+          fullName: 'Demo User', 
+          type: 'user',
+          id: 'default-user-001',
+          createdAt: new Date(),
+          passwordHash: hashPassword('user123') // Default password
+        }
+        
+        registeredUsers = [defaultAdmin, defaultUser]
+        
+        // Store the default users
+        const stored = setStorageItem('adminUsersList', JSON.stringify(registeredUsers))
+        if (stored) {
+          console.log('✅ Default users created successfully')
+          console.log('🔑 Admin: admin@darksphere.com / admin123')
+          console.log('🔑 User: user@darksphere.com / user123')
+        } else {
+          console.error('❌ Failed to create default users')
+          setError('Unable to initialize users. localStorage may be disabled.')
+          setLoading(false)
+          return
+        }
       }
       
       // Find user by email
@@ -562,6 +623,18 @@ export default function HomePage() {
                 >
                   Need a security key? Get one here
                 </button>
+                
+                <div className="text-xs text-minimal-gray-500 mt-4 p-3 bg-minimal-gray-900 border border-minimal-gray-800">
+                  <p className="mb-2">🔧 Mobile Demo Accounts:</p>
+                  <p>Admin: admin@darksphere.com / admin123</p>
+                  <p>User: user@darksphere.com / user123</p>
+                  <button
+                    onClick={initializeUsers}
+                    className="mt-2 w-full bg-minimal-gray-800 hover:bg-minimal-gray-700 text-minimal-white text-xs py-1 px-2 transition-colors"
+                  >
+                    🔄 Initialize Demo Users
+                  </button>
+                </div>
               </div>
             </div>
           )}
