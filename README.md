@@ -267,5 +267,4 @@ Potential improvements for a full production version:
 
 ---
 
-**Welcome to DarkSphere!** 🌑✨ Start sharing your thoughts and connecting with others in this modern, secure social platform.#   D a r k S p h e r e  
- 
+**Welcome to DarkSphere!** 🌑✨ Start sharing your thoughts and connecting with others in this modern, secure social platform.
