@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   
   // Users state
   const [users, setUsers] = useState<User[]>([])
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
@@ -195,20 +196,29 @@ export default function AdminDashboard() {
 
   const deleteUser = async (userId: string, userFullName: string) => {
     try {
+      console.log(`🗑️ Attempting to delete user: ${userFullName} (${userId})`)
+      setDeletingUserId(userId) // Show loading state
+      
       const response = await fetch(`/api/users/${userId}`, {
         method: 'DELETE'
       })
       
       if (response.ok) {
-        // Reload users list to reflect the deletion
+        console.log(`✅ API call successful for user: ${userFullName}`)
+        // Force reload users list to reflect the deletion
         await loadUsers()
-        console.log(`✅ Successfully deleted user: ${userFullName}`)
+        await loadSecurityKeys() // Also reload keys as they might be freed
+        console.log(`✅ UI refreshed after deleting user: ${userFullName}`)
       } else {
         const data = await response.json()
-        console.error('Failed to delete user:', data.error)
+        console.error('❌ Failed to delete user:', data.error)
+        alert(`Failed to delete user: ${data.error}`)
       }
     } catch (error) {
-      console.error('Error deleting user:', error)
+      console.error('❌ Error deleting user:', error)
+      alert(`Error deleting user: ${error}`)
+    } finally {
+      setDeletingUserId(null) // Clear loading state
     }
   }
 
@@ -496,10 +506,19 @@ export default function AdminDashboard() {
                               () => deleteUser(user.id, user.fullName),
                               'danger'
                             )}
-                            className="p-2 hover:bg-red-50 text-red-600 hover:text-red-800 transition-colors"
+                            disabled={deletingUserId === user.id}
+                            className={`p-2 transition-colors ${
+                              deletingUserId === user.id 
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                : 'hover:bg-red-50 text-red-600 hover:text-red-800'
+                            }`}
                             title={`Delete ${user.type} profile`}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {deletingUserId === user.id ? (
+                              <div className="w-4 h-4 animate-spin border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </button>
                         )}
                       </div>

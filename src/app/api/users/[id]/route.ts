@@ -38,7 +38,7 @@ export async function DELETE(
     // 4. Mark security key as unused if user had one
     await sql`
       UPDATE security_keys 
-      SET is_used = false, used_by = null, used_by_username = null, used_at = null
+      SET is_used = false, used_by = null, used_at = null
       WHERE used_by = ${userId}
     `
     console.log(`🔑 Released security key for user ${userId}`)
