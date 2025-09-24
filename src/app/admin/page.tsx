@@ -11,7 +11,8 @@ import {
   Shield, 
   User,
   Copy,
-  Check
+  Check,
+  AlertTriangle
 } from 'lucide-react'
 
 interface User {
@@ -32,6 +33,14 @@ interface SecurityKey {
   createdAt: Date
 }
 
+interface ConfirmDialog {
+  show: boolean
+  title: string
+  message: string
+  action: () => void
+  type: 'danger' | 'warning'
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -45,6 +54,15 @@ export default function AdminDashboard() {
   
   // Users state
   const [users, setUsers] = useState<User[]>([])
+  
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
+    show: false,
+    title: '',
+    message: '',
+    action: () => {},
+    type: 'danger'
+  })
 
   useEffect(() => {
     // Check if user is logged in and is admin
@@ -173,6 +191,44 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error deleting key:', error)
     }
+  }
+
+  const deleteUser = async (userId: string, userFullName: string) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        // Reload users list to reflect the deletion
+        await loadUsers()
+        console.log(`✅ Successfully deleted user: ${userFullName}`)
+      } else {
+        const data = await response.json()
+        console.error('Failed to delete user:', data.error)
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error)
+    }
+  }
+
+  const showConfirmDialog = (title: string, message: string, action: () => void, type: 'danger' | 'warning' = 'danger') => {
+    setConfirmDialog({
+      show: true,
+      title,
+      message,
+      action,
+      type
+    })
+  }
+
+  const hideConfirmDialog = () => {
+    setConfirmDialog(prev => ({ ...prev, show: false }))
+  }
+
+  const executeConfirmAction = () => {
+    confirmDialog.action()
+    hideConfirmDialog()
   }
 
   const adminStats = {
@@ -421,6 +477,32 @@ export default function AdminDashboard() {
                           {user.email} • Joined: {user.createdAt.toLocaleDateString()}
                         </div>
                       </div>
+                      
+                      {/* Delete Button - Allow deletion of any user except current admin */}
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => router.push(`/profile/${user.username}`)}
+                          className="p-2 hover:bg-gray-100 text-gray-600 hover:text-gray-800 transition-colors"
+                          title="View profile"
+                        >
+                          <User className="w-4 h-4" />
+                        </button>
+                        
+                        {user.id !== currentUser?.id && (
+                          <button
+                            onClick={() => showConfirmDialog(
+                              `Delete ${user.type === 'admin' ? 'Admin' : 'User'} Profile`,
+                              `Are you sure you want to permanently delete ${user.type === 'admin' ? 'ADMIN' : 'user'} "${user.fullName}"?\n\nThis will remove:\n• User account and profile\n• All posts and comments\n• All interactions and data\n\nThis action cannot be undone.`,
+                              () => deleteUser(user.id, user.fullName),
+                              'danger'
+                            )}
+                            className="p-2 hover:bg-red-50 text-red-600 hover:text-red-800 transition-colors"
+                            title={`Delete ${user.type} profile`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -434,6 +516,39 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Confirmation Dialog */}
+      {confirmDialog.show && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-black p-6 max-w-md w-full">
+            <div className="flex items-center space-x-3 mb-4">
+              <AlertTriangle className="w-6 h-6 text-red-600" />
+              <h3 className="text-lg font-semibold text-black">{confirmDialog.title}</h3>
+            </div>
+            
+            <p className="text-gray-700 mb-6 whitespace-pre-line leading-relaxed">{confirmDialog.message}</p>
+            
+            <div className="flex items-center justify-end space-x-3">
+              <button
+                onClick={hideConfirmDialog}
+                className="px-4 py-2 text-gray-600 hover:text-black transition-colors border border-gray-300 hover:border-black"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeConfirmAction}
+                className={`px-4 py-2 font-medium transition-colors ${
+                  confirmDialog.type === 'danger' 
+                    ? 'bg-red-600 text-white hover:bg-red-700' 
+                    : 'bg-black text-white hover:bg-gray-800'
+                }`}
+              >
+                {confirmDialog.type === 'danger' ? 'Delete' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
