@@ -331,6 +331,53 @@ export default function AdminDashboard() {
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-minimal-gray-400">Total Users</p>
+                <p className="text-2xl font-bold text-minimal-white">{users.length}</p>
+              </div>
+              <Users className="w-8 h-8 text-minimal-white" />
+            </div>
+          </div>
+          
+          <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-minimal-gray-400">Admin Users</p>
+                <p className="text-2xl font-bold text-minimal-white">
+                  {users.filter(user => user.type === 'admin').length}
+                </p>
+              </div>
+              <Shield className="w-8 h-8 text-minimal-white" />
+            </div>
+          </div>
+          
+          <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-minimal-gray-400">Security Keys</p>
+                <p className="text-2xl font-bold text-minimal-white">{securityKeys.length}</p>
+              </div>
+              <Key className="w-8 h-8 text-minimal-white" />
+            </div>
+          </div>
+          
+          <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-minimal-gray-400">Used Keys</p>
+                <p className="text-2xl font-bold text-minimal-white">
+                  {securityKeys.filter(key => key.used).length}
+                </p>
+              </div>
+              <Key className="w-8 h-8 text-minimal-gray-700" />
+            </div>
+          </div>
+        </div>
+
         {activeTab === 'keys' && (
           <div className="space-y-6">
             {/* Key Generator */}
@@ -397,7 +444,7 @@ export default function AdminDashboard() {
                               ? 'bg-minimal-gray-600 text-minimal-white' 
                               : 'bg-minimal-gray-800 text-minimal-white'
                           }`}>
-                            {key.used ? `Used by ${key.usedBy}` : 'Available'}
+                            {key.used ? `Used by: ${key.usedBy || 'Unknown'}` : 'Available'}
                           </span>
                         </div>
                         <p className="text-xs text-minimal-gray-400 mt-1">

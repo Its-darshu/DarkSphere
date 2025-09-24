@@ -54,20 +54,45 @@ export default function HomePage() {
       return
     }
     
-    const key = SECURITY_KEYS[securityKey as keyof typeof SECURITY_KEYS]
-    if (!key) {
-      setError('Invalid security key')
+    // Check hardcoded keys first
+    const hardcodedKey = SECURITY_KEYS[securityKey as keyof typeof SECURITY_KEYS]
+    if (hardcodedKey && !hardcodedKey.used) {
+      setKeyValidated(true)
+      setUserType(hardcodedKey.type as 'admin' | 'user')
+      setCurrentStep('register')
       return
     }
     
-    if (key.used) {
+    // Check admin-generated keys from localStorage
+    const adminKeys = localStorage.getItem('adminSecurityKeys')
+    if (adminKeys) {
+      const keys = JSON.parse(adminKeys)
+      const adminGeneratedKey = keys.find((key: any) => key.keyValue === securityKey && !key.used)
+      
+      if (adminGeneratedKey) {
+        setKeyValidated(true)
+        setUserType(adminGeneratedKey.keyType as 'admin' | 'user')
+        setCurrentStep('register')
+        return
+      }
+    }
+    
+    // Check if key exists but is already used
+    if (hardcodedKey && hardcodedKey.used) {
       setError('This security key has already been used')
       return
     }
     
-    setKeyValidated(true)
-    setUserType(key.type as 'admin' | 'user')
-    setCurrentStep('register')
+    if (adminKeys) {
+      const keys = JSON.parse(adminKeys)
+      const usedKey = keys.find((key: any) => key.keyValue === securityKey && key.used)
+      if (usedKey) {
+        setError('This security key has already been used')
+        return
+      }
+    }
+    
+    setError('Invalid security key')
   }
 
   const handleRegister = async () => {
@@ -118,8 +143,24 @@ export default function HomePage() {
     
     // Simulate API call
     setTimeout(() => {
-      // Mark key as used
-      SECURITY_KEYS[securityKey as keyof typeof SECURITY_KEYS].used = true
+      // Mark key as used - check both hardcoded and admin-generated keys
+      const hardcodedKey = SECURITY_KEYS[securityKey as keyof typeof SECURITY_KEYS]
+      if (hardcodedKey) {
+        SECURITY_KEYS[securityKey as keyof typeof SECURITY_KEYS].used = true
+      } else {
+        // Mark admin-generated key as used
+        const adminKeys = localStorage.getItem('adminSecurityKeys')
+        if (adminKeys) {
+          const keys = JSON.parse(adminKeys)
+          const keyIndex = keys.findIndex((key: any) => key.keyValue === securityKey)
+          if (keyIndex !== -1) {
+            keys[keyIndex].used = true
+            keys[keyIndex].usedBy = registerForm.username
+            keys[keyIndex].usedAt = new Date()
+            localStorage.setItem('adminSecurityKeys', JSON.stringify(keys))
+          }
+        }
+      }
       
       // Create new user object
       const newUser = {
