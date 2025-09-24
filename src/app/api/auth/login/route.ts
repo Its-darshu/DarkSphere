@@ -4,16 +4,10 @@ import { Database } from '@/lib/database'
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password, securityKey } = await request.json()
+    const { username, password } = await request.json()
 
-    if (!username || !password || !securityKey) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
-
-    // Validate security key first
-    const keyData = await Database.getSecurityKeyByValue(securityKey)
-    if (!keyData || keyData.is_used) {
-      return NextResponse.json({ error: 'Invalid or used security key' }, { status: 400 })
+    if (!username || !password) {
+      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 })
     }
 
     // Check if user exists
@@ -27,9 +21,6 @@ export async function POST(request: NextRequest) {
     if (!isValidPassword) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
-
-    // Mark security key as used
-    await Database.useSecurityKey(securityKey, user.id)
 
     // Return user data (excluding password)
     const { password_hash, ...userWithoutPassword } = user

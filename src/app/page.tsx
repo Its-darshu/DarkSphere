@@ -10,10 +10,12 @@ export default function HomePage() {
     username: '',
     email: '',
     password: '',
+    confirmPassword: '',
     fullName: '',
     securityKey: ''
   })
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -23,15 +25,41 @@ export default function HomePage() {
     setLoading(true)
     setError('')
 
+    // Validation for registration
+    if (mode === 'register') {
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match')
+        setLoading(false)
+        return
+      }
+      
+      if (formData.password.length < 6) {
+        setError('Password must be at least 6 characters long')
+        setLoading(false)
+        return
+      }
+      
+      if (!formData.securityKey) {
+        setError('Security key is required for registration')
+        setLoading(false)
+        return
+      }
+    }
+
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register'
       
+      // Only send security key for registration
+      const requestBody = mode === 'login' 
+        ? { username: formData.username, password: formData.password }
+        : formData
+
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(requestBody)
       })
 
       const data = await response.json()
@@ -173,19 +201,47 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Security Key */}
-            <div className="relative">
-              <input
-                type="text"
-                name="securityKey"
-                placeholder="Security Key"
-                value={formData.securityKey}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 pr-12 border border-black bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:ring-inset"
-              />
-              <Key className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
-            </div>
+            {/* Confirm Password (Register only) */}
+            {mode === 'register' && (
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  placeholder="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 pr-12 border border-black bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:ring-inset"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 transition-colors"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-4 h-4 text-gray-600" />
+                  ) : (
+                    <Eye className="w-4 h-4 text-gray-600" />
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Security Key (Register only) */}
+            {mode === 'register' && (
+              <div className="relative">
+                <input
+                  type="text"
+                  name="securityKey"
+                  placeholder="Security Key"
+                  value={formData.securityKey}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 pr-12 border border-black bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:ring-inset"
+                />
+                <Key className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
+              </div>
+            )}
 
             {/* Error Message */}
             {error && (
@@ -206,8 +262,17 @@ export default function HomePage() {
 
           {/* Info */}
           <div className="mt-6 text-xs text-center text-gray-600">
-            <p>Need a security key to join? Contact an admin.</p>
-            <p className="mt-1">Security keys are required for all accounts.</p>
+            {mode === 'register' ? (
+              <>
+                <p>Need a security key to join? Contact an admin.</p>
+                <p className="mt-1">Security keys are required for registration.</p>
+              </>
+            ) : (
+              <>
+                <p>Welcome back to DarkSphere!</p>
+                <p className="mt-1">Login with your username and password.</p>
+              </>
+            )}
           </div>
         </div>
       </div>
