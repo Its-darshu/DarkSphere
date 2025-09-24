@@ -18,7 +18,60 @@ export default function HomePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [keyValidation, setKeyValidation] = useState<{
+    checking: boolean
+    valid: boolean | null
+    message: string
+    keyType?: string
+  }>({
+    checking: false,
+    valid: null,
+    message: ''
+  })
   const router = useRouter()
+
+  // Validate security key in real-time when user types
+  const validateSecurityKey = async (key: string) => {
+    if (!key || key.trim() === '') {
+      setKeyValidation({ checking: false, valid: null, message: '' })
+      return
+    }
+
+    setKeyValidation({ checking: true, valid: null, message: 'Checking security key...' })
+
+    try {
+      const response = await fetch('/api/validate-key', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ securityKey: key.trim() })
+      })
+
+      const data = await response.json()
+
+      if (data.valid) {
+        setKeyValidation({
+          checking: false,
+          valid: true,
+          message: `✅ Valid ${data.keyType} key`,
+          keyType: data.keyType
+        })
+      } else {
+        setKeyValidation({
+          checking: false,
+          valid: false,
+          message: `❌ ${data.error}`
+        })
+      }
+    } catch (error) {
+      setKeyValidation({
+        checking: false,
+        valid: false,
+        message: '❌ Error validating key'
+      })
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,6 +82,13 @@ export default function HomePage() {
     if (mode === 'register') {
       if (!formData.securityKey || formData.securityKey.trim() === '') {
         setError('🔑 Security key is required for registration')
+        setLoading(false)
+        return
+      }
+
+      // FIRST: Validate security key before allowing profile creation
+      if (!keyValidation.valid) {
+        setError('🔑 Please enter a valid security key before creating your profile')
         setLoading(false)
         return
       }
@@ -45,7 +105,7 @@ export default function HomePage() {
         return
       }
       
-      console.log('🔑 Validating security key:', formData.securityKey)
+      console.log('🔑 Security key validated, proceeding with registration')
     }
 
     try {
@@ -103,10 +163,17 @@ export default function HomePage() {
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: value
     }))
+
+    // Validate security key in real-time for registration mode
+    if (name === 'securityKey' && mode === 'register') {
+      // Debounce the validation call
+      setTimeout(() => validateSecurityKey(value), 500)
+    }
   }
 
   return (
@@ -250,9 +317,26 @@ export default function HomePage() {
                   value={formData.securityKey}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-3 pr-12 border border-black bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:ring-inset"
+                  className={`w-full px-4 py-3 pr-12 border bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-inset transition-colors ${
+                    keyValidation.valid === true ? 'border-green-500 focus:ring-green-500 bg-green-50' :
+                    keyValidation.valid === false ? 'border-red-500 focus:ring-red-500 bg-red-50' :
+                    'border-black focus:ring-black'
+                  }`}
                 />
                 <Key className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
+                
+                {keyValidation.checking && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Validating security key...
+                  </p>
+                )}
+                {keyValidation.message && (
+                  <p className={`text-sm mt-1 ${
+                    keyValidation.valid ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {keyValidation.message}
+                  </p>
+                )}
               </div>
             )}
 

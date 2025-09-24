@@ -78,16 +78,16 @@ export default function Dashboard() {
     }
     
     try {
-      const userData = JSON.parse(userDataString)
-      console.log('✅ Raw user data:', userData)
+      const parsedUserData = JSON.parse(userData)
+      console.log('✅ Raw user data:', parsedUserData)
       
       // Map database fields to expected format
       const user = {
-        id: userData.id,
-        username: userData.username,
-        email: userData.email,
-        fullName: userData.full_name || userData.fullName || 'Unknown User',
-        type: userData.user_type || userData.type || 'user'
+        id: parsedUserData.id,
+        username: parsedUserData.username,
+        email: parsedUserData.email,
+        fullName: parsedUserData.full_name || parsedUserData.fullName || 'Unknown User',
+        type: parsedUserData.user_type || parsedUserData.type || 'user'
       }
       
       console.log('✅ Mapped user data:', user)
