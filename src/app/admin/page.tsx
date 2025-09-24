@@ -6,14 +6,12 @@ import {
   ArrowLeft, 
   Key, 
   Users, 
-  Megaphone, 
   Plus, 
   Trash2, 
   Shield, 
   User,
   Copy,
-  Check,
-  AlertTriangle
+  Check
 } from 'lucide-react'
 
 interface User {
@@ -37,7 +35,7 @@ interface SecurityKey {
 export default function AdminDashboard() {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [activeTab, setActiveTab] = useState<'keys' | 'users' | 'announcements'>('keys')
+  const [activeTab, setActiveTab] = useState<'keys' | 'users'>('keys')
   
   // Security keys state
   const [securityKeys, setSecurityKeys] = useState<SecurityKey[]>([])
@@ -251,7 +249,7 @@ export default function AdminDashboard() {
           
           <div className="bg-gray-50 border border-black p-4">
             <div className="flex items-center space-x-2 mb-2">
-              <AlertTriangle className="w-5 h-5" />
+              <Key className="w-5 h-5" />
               <span className="text-sm font-medium">UNUSED KEYS</span>
             </div>
             <div className="text-2xl font-bold">{adminStats.unusedKeys}</div>
