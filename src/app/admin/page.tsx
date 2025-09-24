@@ -34,23 +34,6 @@ interface SecurityKey {
   createdAt: Date
 }
 
-interface Announcement {
-  id: string
-  title: string
-  content: string
-  type: 'info' | 'warning' | 'success'
-  createdAt: Date
-  createdBy: string
-}
-
-interface ConfirmDialog {
-  show: boolean
-  title: string
-  message: string
-  action: () => void
-  type: 'danger' | 'warning'
-}
-
 export default function AdminDashboard() {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -64,23 +47,6 @@ export default function AdminDashboard() {
   
   // Users state
   const [users, setUsers] = useState<User[]>([])
-  
-  // Announcements state
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
-  const [newAnnouncement, setNewAnnouncement] = useState({
-    title: '',
-    content: '',
-    type: 'info' as 'info' | 'warning' | 'success'
-  })
-  
-  // Confirm dialog state
-  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
-    show: false,
-    title: '',
-    message: '',
-    action: () => {},
-    type: 'danger'
-  })
 
   useEffect(() => {
     // Check if user is logged in and is admin
@@ -92,103 +58,97 @@ export default function AdminDashboard() {
     }
     
     const user = JSON.parse(userData)
-    if (user.type !== 'admin') {
+    if (user.user_type !== 'admin') {
       router.push('/dashboard')
       return
     }
     
-    setCurrentUser(user)
+    setCurrentUser({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullName: user.full_name,
+      type: user.user_type,
+      createdAt: new Date(user.created_at || Date.now())
+    })
     
-    // Load data
+    // Load initial data
     loadSecurityKeys()
     loadUsers()
-    loadAnnouncements()
     
-    // Set up polling to check for new users every 3 seconds
-    const refreshInterval = setInterval(() => {
+    // Set up polling for real-time updates
+    const interval = setInterval(() => {
+      loadSecurityKeys()
       loadUsers()
-      loadSecurityKeys() // Also refresh keys to see usage
     }, 3000)
     
-    // Listen for storage changes
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'adminUsersList') {
-        console.log('🔄 Admin: New user detected, refreshing')
-        loadUsers()
-      }
-      if (e.key === 'adminSecurityKeys') {
-        console.log('🔄 Admin: Security keys updated, refreshing')
-        loadSecurityKeys()
-      }
-    }
-    
-    window.addEventListener('storage', handleStorageChange)
-    
-    return () => {
-      clearInterval(refreshInterval)
-      window.removeEventListener('storage', handleStorageChange)
-    }
+    return () => clearInterval(interval)
   }, [router])
 
-  const loadSecurityKeys = () => {
-    const savedKeys = localStorage.getItem('adminSecurityKeys')
-    if (savedKeys) {
-      setSecurityKeys(JSON.parse(savedKeys))
-    } else {
-      // Create some default keys
-      const defaultKeys: SecurityKey[] = [
-        {
-          id: '1',
-          keyValue: 'ADMIN-SUPER-ACCESS',
-          keyType: 'admin',
-          used: false,
-          createdAt: new Date()
-        },
-        {
-          id: '2',
-          keyValue: 'USER-BETA-TESTER',
-          keyType: 'user',
-          used: false,
-          createdAt: new Date()
-        }
-      ]
-      setSecurityKeys(defaultKeys)
-      localStorage.setItem('adminSecurityKeys', JSON.stringify(defaultKeys))
-    }
-  }
-
-  const loadUsers = () => {
-    const savedUsers = localStorage.getItem('adminUsersList')
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers))
-    }
-  }
-
-  const loadAnnouncements = () => {
-    const savedAnnouncements = localStorage.getItem('globalAnnouncements')
-    if (savedAnnouncements) {
-      setAnnouncements(JSON.parse(savedAnnouncements))
-    }
-  }
-
-  const generateKeys = () => {
-    const newKeys: SecurityKey[] = []
-    
-    for (let i = 0; i < keyGenCount; i++) {
-      const keyValue = `${keyGenType.toUpperCase()}-${Math.random().toString(36).substr(2, 8).toUpperCase()}-${Date.now()}`
+  const loadSecurityKeys = async () => {
+    try {
+      const response = await fetch('/api/security-keys')
+      const data = await response.json()
       
-      newKeys.push({
-        id: Date.now().toString() + i,
-        keyValue,
-        keyType: keyGenType,
-        used: false,
-        createdAt: new Date()
-      })
+      if (response.ok && data.keys) {
+        setSecurityKeys(data.keys.map((key: any) => ({
+          id: key.id,
+          keyValue: key.key_value,
+          keyType: key.key_type,
+          used: key.is_used,
+          usedBy: key.used_by_username || key.used_by,
+          createdAt: new Date(key.created_at)
+        })))
+      }
+    } catch (error) {
+      console.error('Failed to load security keys:', error)
     }
-    
-    const updatedKeys = [...securityKeys, ...newKeys]
-    setSecurityKeys(updatedKeys)
-    localStorage.setItem('adminSecurityKeys', JSON.stringify(updatedKeys))
+  }
+
+  const loadUsers = async () => {
+    try {
+      const response = await fetch('/api/users')
+      const data = await response.json()
+      
+      if (response.ok && data.users) {
+        setUsers(data.users.map((user: any) => ({
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          fullName: user.full_name,
+          type: user.user_type,
+          createdAt: new Date(user.created_at)
+        })))
+      }
+    } catch (error) {
+      console.error('Failed to load users:', error)
+    }
+  }
+
+  const generateKeys = async () => {
+    try {
+      const response = await fetch('/api/security-keys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          count: keyGenCount,
+          keyType: keyGenType
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.keys) {
+        // Reload security keys to show the new ones
+        await loadSecurityKeys()
+      } else {
+        console.error('Failed to generate keys:', data.error)
+      }
+    } catch (error) {
+      console.error('Error generating keys:', error)
+    }
   }
 
   const copyKey = (key: string) => {
@@ -197,531 +157,285 @@ export default function AdminDashboard() {
     setTimeout(() => setCopiedKey(null), 2000)
   }
 
-  const deleteKey = (keyId: string) => {
-    const updatedKeys = securityKeys.filter(key => key.id !== keyId)
-    setSecurityKeys(updatedKeys)
-    localStorage.setItem('adminSecurityKeys', JSON.stringify(updatedKeys))
-  }
+  const deleteKey = async (keyId: string) => {
+    try {
+      const response = await fetch('/api/security-keys', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ keyId })
+      })
 
-  const deleteUser = (userId: string) => {
-    // Remove user from users list
-    const updatedUsers = users.filter(user => user.id !== userId)
-    setUsers(updatedUsers)
-    localStorage.setItem('adminUsersList', JSON.stringify(updatedUsers))
-    
-    // Remove user's posts
-    const posts = JSON.parse(localStorage.getItem('posts') || '[]')
-    const updatedPosts = posts.filter((post: any) => post.authorId !== userId)
-    localStorage.setItem('posts', JSON.stringify(updatedPosts))
-    
-    // Remove user's comments
-    const comments = JSON.parse(localStorage.getItem('comments') || '[]')
-    const updatedComments = comments.filter((comment: any) => comment.authorId !== userId)
-    localStorage.setItem('comments', JSON.stringify(updatedComments))
-    
-    // Remove user's likes from posts
-    const postsWithUpdatedLikes = updatedPosts.map((post: any) => ({
-      ...post,
-      likedBy: post.likedBy ? post.likedBy.filter((id: string) => id !== userId) : [],
-      likes: post.likedBy ? post.likedBy.filter((id: string) => id !== userId).length : 0
-    }))
-    localStorage.setItem('posts', JSON.stringify(postsWithUpdatedLikes))
-    
-    // Remove user's profile data
-    const userProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}')
-    delete userProfiles[userId]
-    localStorage.setItem('userProfiles', JSON.stringify(userProfiles))
-    
-    // Remove user's security key usage if any
-    const keys = JSON.parse(localStorage.getItem('adminSecurityKeys') || '[]')
-    const updatedKeys = keys.map((key: any) => ({
-      ...key,
-      used: key.usedBy === userId ? false : key.used,
-      usedBy: key.usedBy === userId ? undefined : key.usedBy
-    }))
-    localStorage.setItem('adminSecurityKeys', JSON.stringify(updatedKeys))
-    setSecurityKeys(updatedKeys)
-  }
-
-  const createAnnouncement = () => {
-    if (!newAnnouncement.title || !newAnnouncement.content || !currentUser) return
-    
-    const announcement: Announcement = {
-      id: Date.now().toString(),
-      title: newAnnouncement.title,
-      content: newAnnouncement.content,
-      type: newAnnouncement.type,
-      createdAt: new Date(),
-      createdBy: currentUser.fullName
+      if (response.ok) {
+        await loadSecurityKeys()
+      } else {
+        console.error('Failed to delete key')
+      }
+    } catch (error) {
+      console.error('Error deleting key:', error)
     }
-    
-    const updatedAnnouncements = [announcement, ...announcements]
-    setAnnouncements(updatedAnnouncements)
-    localStorage.setItem('globalAnnouncements', JSON.stringify(updatedAnnouncements))
-    
-    // Reset form
-    setNewAnnouncement({
-      title: '',
-      content: '',
-      type: 'info'
-    })
   }
 
-  const deleteAnnouncement = (announcementId: string) => {
-    const updatedAnnouncements = announcements.filter(a => a.id !== announcementId)
-    setAnnouncements(updatedAnnouncements)
-    localStorage.setItem('globalAnnouncements', JSON.stringify(updatedAnnouncements))
-  }
-
-  const showConfirmDialog = (title: string, message: string, action: () => void, type: 'danger' | 'warning' = 'danger') => {
-    setConfirmDialog({
-      show: true,
-      title,
-      message,
-      action,
-      type
-    })
-  }
-
-  const hideConfirmDialog = () => {
-    setConfirmDialog(prev => ({ ...prev, show: false }))
-  }
-
-  const executeConfirmAction = () => {
-    confirmDialog.action()
-    hideConfirmDialog()
+  const adminStats = {
+    totalUsers: users.length,
+    totalAdmins: users.filter(user => user.type === 'admin').length,
+    totalKeys: securityKeys.length,
+    usedKeys: securityKeys.filter(key => key.used).length,
+    unusedKeys: securityKeys.filter(key => !key.used).length
   }
 
   if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-minimal-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-b-2 border-minimal-white mx-auto mb-4"></div>
-          <p className="text-minimal-gray-400">Loading...</p>
-        </div>
+    return <div className="min-h-screen bg-white text-black flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin w-8 h-8 border-2 border-black border-t-transparent mx-auto mb-4"></div>
+        <p>Loading admin dashboard...</p>
       </div>
-    )
+    </div>
   }
 
   return (
-    <div className="min-h-screen bg-minimal-black">
+    <div className="min-h-screen bg-white text-black">
       {/* Header */}
-      <header className="bg-minimal-gray-900 border-b border-minimal-gray-800">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="text-minimal-gray-400 hover:text-minimal-white transition-colors"
-              >
-                <ArrowLeft className="w-6 h-6" />
-              </button>
-              <div className="flex items-center space-x-3">
-                <Shield className="w-8 h-8 text-minimal-white" />
-                <div>
-                  <h1 className="text-2xl font-bold text-minimal-white">Admin Dashboard</h1>
-                  <p className="text-sm text-minimal-gray-400">Manage your DarkSphere instance</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <span className="text-minimal-white">Welcome, {currentUser.fullName}</span>
-            </div>
+      <div className="border-b border-black p-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <button 
+              onClick={() => router.push('/dashboard')}
+              className="p-2 hover:bg-gray-100 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-2xl font-bold">ADMIN DASHBOARD</h1>
           </div>
-          
-          {/* Navigation Tabs */}
-          <div className="flex items-center space-x-1 mt-6">
-            {[
-              { id: 'keys', icon: Key, label: 'Security Keys' },
-              { id: 'users', icon: Users, label: 'User Management' },
-              { id: 'announcements', icon: Megaphone, label: 'Announcements' }
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center space-x-2 px-4 py-2 font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-minimal-white text-minimal-black'
-                    : 'text-minimal-gray-400 hover:text-minimal-white hover:bg-minimal-gray-800'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
+          <div className="text-sm">
+            Welcome, <span className="font-medium">{currentUser.fullName}</span>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-minimal-gray-400">Total Users</p>
-                <p className="text-2xl font-bold text-minimal-white">{users.length}</p>
-              </div>
-              <Users className="w-8 h-8 text-minimal-white" />
+      <div className="max-w-6xl mx-auto p-6">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+          <div className="bg-gray-50 border border-black p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Users className="w-5 h-5" />
+              <span className="text-sm font-medium">TOTAL USERS</span>
             </div>
+            <div className="text-2xl font-bold">{adminStats.totalUsers}</div>
           </div>
           
-          <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-minimal-gray-400">Admin Users</p>
-                <p className="text-2xl font-bold text-minimal-white">
-                  {users.filter(user => user.type === 'admin').length}
-                </p>
-              </div>
-              <Shield className="w-8 h-8 text-minimal-white" />
+          <div className="bg-gray-50 border border-black p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Shield className="w-5 h-5" />
+              <span className="text-sm font-medium">ADMINS</span>
             </div>
+            <div className="text-2xl font-bold">{adminStats.totalAdmins}</div>
           </div>
           
-          <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-minimal-gray-400">Security Keys</p>
-                <p className="text-2xl font-bold text-minimal-white">{securityKeys.length}</p>
-              </div>
-              <Key className="w-8 h-8 text-minimal-white" />
+          <div className="bg-gray-50 border border-black p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Key className="w-5 h-5" />
+              <span className="text-sm font-medium">TOTAL KEYS</span>
             </div>
+            <div className="text-2xl font-bold">{adminStats.totalKeys}</div>
           </div>
           
-          <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-minimal-gray-400">Used Keys</p>
-                <p className="text-2xl font-bold text-minimal-white">
-                  {securityKeys.filter(key => key.used).length}
-                </p>
-              </div>
-              <Key className="w-8 h-8 text-minimal-gray-700" />
+          <div className="bg-gray-50 border border-black p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Check className="w-5 h-5" />
+              <span className="text-sm font-medium">USED KEYS</span>
             </div>
+            <div className="text-2xl font-bold">{adminStats.usedKeys}</div>
+          </div>
+          
+          <div className="bg-gray-50 border border-black p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <AlertTriangle className="w-5 h-5" />
+              <span className="text-sm font-medium">UNUSED KEYS</span>
+            </div>
+            <div className="text-2xl font-bold">{adminStats.unusedKeys}</div>
           </div>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex mb-6 border border-black">
+          <button
+            onClick={() => setActiveTab('keys')}
+            className={`flex-1 py-3 px-4 text-sm font-medium transition-colors
+              ${activeTab === 'keys' 
+                ? 'bg-black text-white' 
+                : 'bg-white text-black hover:bg-gray-100'}`}
+          >
+            <Key className="w-4 h-4 inline mr-2" />
+            SECURITY KEYS
+          </button>
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex-1 py-3 px-4 text-sm font-medium transition-colors border-l border-black
+              ${activeTab === 'users' 
+                ? 'bg-black text-white' 
+                : 'bg-white text-black hover:bg-gray-100'}`}
+          >
+            <Users className="w-4 h-4 inline mr-2" />
+            USER MANAGEMENT
+          </button>
+        </div>
+
+        {/* Security Keys Tab */}
         {activeTab === 'keys' && (
           <div className="space-y-6">
-            {/* Key Generator */}
-            <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-6">
-              <h2 className="text-xl font-semibold text-minimal-white mb-4">Generate Security Keys</h2>
-              <div className="flex items-end space-x-4">
+            {/* Key Generation */}
+            <div className="bg-gray-50 border border-black p-6">
+              <h3 className="text-lg font-bold mb-4">GENERATE SECURITY KEYS</h3>
+              <div className="flex flex-wrap items-end gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-minimal-white mb-2">Key Type</label>
-                  <select
-                    value={keyGenType}
-                    onChange={(e) => setKeyGenType(e.target.value as 'admin' | 'user')}
-                    className="px-3 py-2 bg-minimal-black border border-minimal-gray-800 text-minimal-white focus:outline-none focus:border-minimal-white"
-                  >
-                    <option value="user">User Keys</option>
-                    <option value="admin">Admin Keys</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-minimal-white mb-2">Count</label>
+                  <label className="block text-sm font-medium mb-2">COUNT</label>
                   <input
                     type="number"
                     min="1"
                     max="10"
                     value={keyGenCount}
                     onChange={(e) => setKeyGenCount(parseInt(e.target.value))}
-                    className="px-3 py-2 w-20 bg-minimal-black border border-minimal-gray-800 text-minimal-white focus:outline-none focus:border-minimal-white"
+                    className="w-20 px-3 py-2 border border-black bg-white text-black focus:outline-none focus:ring-2 focus:ring-black focus:ring-inset"
                   />
                 </div>
-                
+                <div>
+                  <label className="block text-sm font-medium mb-2">TYPE</label>
+                  <select
+                    value={keyGenType}
+                    onChange={(e) => setKeyGenType(e.target.value as 'admin' | 'user')}
+                    className="px-3 py-2 border border-black bg-white text-black focus:outline-none focus:ring-2 focus:ring-black focus:ring-inset"
+                  >
+                    <option value="user">USER</option>
+                    <option value="admin">ADMIN</option>
+                  </select>
+                </div>
                 <button
                   onClick={generateKeys}
-                  className="bg-minimal-white text-minimal-black hover:bg-minimal-gray-200 font-medium py-2 px-4 flex items-center space-x-2 transition-colors"
+                  className="bg-black text-white px-6 py-2 hover:bg-gray-800 transition-colors flex items-center space-x-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Generate</span>
+                  <span>GENERATE</span>
                 </button>
               </div>
             </div>
 
-            {/* Security Keys List */}
-            <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-6">
-              <h2 className="text-xl font-semibold text-minimal-white mb-4">Security Keys</h2>
-              {securityKeys.length === 0 ? (
-                <p className="text-minimal-gray-400">No security keys generated yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  {securityKeys.map((key) => (
-                    <div key={key.id} className="flex items-center justify-between p-4 bg-minimal-black border border-minimal-gray-800">
+            {/* Keys List */}
+            <div className="border border-black">
+              <div className="bg-gray-50 border-b border-black p-4">
+                <h3 className="font-bold">SECURITY KEYS ({securityKeys.length})</h3>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {securityKeys.map((key) => (
+                  <div key={key.id} className="border-b border-gray-200 p-4 hover:bg-gray-50">
+                    <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-3">
-                          <code className="text-minimal-white font-mono bg-minimal-gray-800 px-2 py-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <code className="bg-gray-100 px-2 py-1 text-sm font-mono">
                             {key.keyValue}
                           </code>
-                          <span className={`text-xs px-2 py-1 ${
-                            key.keyType === 'admin' 
-                              ? 'bg-minimal-gray-800 text-minimal-white' 
-                              : 'bg-minimal-gray-700 text-minimal-white'
-                          }`}>
-                            {key.keyType}
+                          <span className={`px-2 py-1 text-xs font-medium border
+                            ${key.keyType === 'admin' 
+                              ? 'bg-red-50 border-red-200 text-red-800' 
+                              : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                            {key.keyType.toUpperCase()}
                           </span>
-                          <span className={`text-xs px-2 py-1 ${
-                            key.used 
-                              ? 'bg-minimal-gray-600 text-minimal-white' 
-                              : 'bg-minimal-gray-800 text-minimal-white'
-                          }`}>
-                            {key.used ? `Used by: ${key.usedBy || 'Unknown'}` : 'Available'}
+                          <span className={`px-2 py-1 text-xs font-medium border
+                            ${key.used 
+                              ? 'bg-gray-50 border-gray-200 text-gray-600' 
+                              : 'bg-green-50 border-green-200 text-green-800'}`}>
+                            {key.used ? 'USED' : 'AVAILABLE'}
                           </span>
                         </div>
-                        <p className="text-xs text-minimal-gray-400 mt-1">
-                          Created: {new Date(key.createdAt).toLocaleString()}
-                        </p>
+                        <div className="text-sm text-gray-600">
+                          Created: {key.createdAt.toLocaleString()}
+                          {key.used && key.usedBy && (
+                            <span className="ml-4">Used by: {key.usedBy}</span>
+                          )}
+                        </div>
                       </div>
-                      
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 ml-4">
                         <button
                           onClick={() => copyKey(key.keyValue)}
-                          className="text-minimal-gray-400 hover:text-minimal-white transition-colors p-2"
+                          className="p-2 hover:bg-gray-100 transition-colors"
                           title="Copy key"
                         >
                           {copiedKey === key.keyValue ? (
-                            <Check className="w-4 h-4 text-minimal-white" />
+                            <Check className="w-4 h-4 text-green-600" />
                           ) : (
                             <Copy className="w-4 h-4" />
                           )}
                         </button>
-                        
-                        <button
-                          onClick={() => showConfirmDialog(
-                            'Delete Security Key',
-                            `Are you sure you want to delete the key "${key.keyValue}"?`,
-                            () => deleteKey(key.id)
-                          )}
-                          className="text-minimal-gray-400 hover:text-minimal-white transition-colors p-2"
-                          title="Delete key"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'users' && (
-          <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-minimal-white">User Management</h2>
-              <div className="text-sm text-minimal-gray-400">
-                Total Users: {users.length}
-              </div>
-            </div>
-            
-            {users.length === 0 ? (
-              <p className="text-minimal-gray-400">No users registered yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {users.map((user) => {
-                  // Calculate user stats
-                  const posts = JSON.parse(localStorage.getItem('posts') || '[]')
-                  const userPosts = posts.filter((post: any) => post.authorId === user.id)
-                  const comments = JSON.parse(localStorage.getItem('comments') || '[]')
-                  const userComments = comments.filter((comment: any) => comment.authorId === user.id)
-                  
-                  return (
-                    <div key={user.id} className="flex items-center justify-between p-4 bg-minimal-black border border-minimal-gray-800">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-minimal-white flex items-center justify-center">
-                          <span className="text-minimal-black font-black text-lg">
-                            {user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <h3 className="font-medium text-minimal-white">{user.fullName}</h3>
-                            <span className={`text-xs px-2 py-1 ${
-                              user.type === 'admin' 
-                                ? 'bg-minimal-gray-800 text-minimal-white' 
-                                : 'bg-minimal-gray-700 text-minimal-white'
-                            }`}>
-                              {user.type}
-                            </span>
-                          </div>
-                          <p className="text-sm text-minimal-gray-400">@{user.username}</p>
-                          <p className="text-sm text-minimal-gray-400">{user.email}</p>
-                          <div className="flex items-center space-x-4 text-xs text-minimal-gray-500 mt-1">
-                            <span>Joined: {new Date(user.createdAt).toLocaleDateString()}</span>
-                            <span>Posts: {userPosts.length}</span>
-                            <span>Comments: {userComments.length}</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {user.id !== currentUser.id && (
-                        <div className="flex items-center space-x-2">
+                        {!key.used && (
                           <button
-                            onClick={() => router.push(`/profile/${user.username}`)}
-                            className="text-minimal-gray-400 hover:text-minimal-white transition-colors p-2"
-                            title="View profile"
-                          >
-                            <User className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => showConfirmDialog(
-                              'Delete User Profile',
-                              `Are you sure you want to permanently delete "${user.fullName}"?\n\nThis will remove:\n• User account and profile\n• ${userPosts.length} posts\n• ${userComments.length} comments\n• All likes and interactions\n• Profile data and settings\n\nThis action cannot be undone.`,
-                              () => deleteUser(user.id),
-                              'danger'
-                            )}
-                            className="text-minimal-gray-400 hover:text-minimal-white transition-colors p-2"
-                            title="Delete user permanently"
+                            onClick={() => deleteKey(key.id)}
+                            className="p-2 hover:bg-red-50 text-red-600 transition-colors"
+                            title="Delete key"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'announcements' && (
-          <div className="space-y-6">
-            {/* Create Announcement */}
-            <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-6">
-              <h2 className="text-xl font-semibold text-minimal-white mb-4">Create Announcement</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-minimal-white mb-2">Title</label>
-                  <input
-                    type="text"
-                    value={newAnnouncement.title}
-                    onChange={(e) => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
-                    placeholder="Announcement title..."
-                    className="w-full px-4 py-2 bg-minimal-black border border-minimal-gray-800 text-minimal-white placeholder-minimal-gray-400 focus:outline-none focus:border-minimal-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-minimal-white mb-2">Content</label>
-                  <textarea
-                    value={newAnnouncement.content}
-                    onChange={(e) => setNewAnnouncement({...newAnnouncement, content: e.target.value})}
-                    placeholder="Write your announcement content..."
-                    rows={4}
-                    className="w-full px-4 py-3 bg-minimal-black border border-minimal-gray-800 text-minimal-white placeholder-minimal-gray-400 focus:outline-none focus:border-minimal-white resize-none"
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <label className="block text-sm font-medium text-minimal-white">Type</label>
-                    <select
-                      value={newAnnouncement.type}
-                      onChange={(e) => setNewAnnouncement({...newAnnouncement, type: e.target.value as any})}
-                      className="px-3 py-2 bg-minimal-black border border-minimal-gray-800 text-minimal-white focus:outline-none focus:border-minimal-white"
-                    >
-                      <option value="info">Info</option>
-                      <option value="warning">Warning</option>
-                      <option value="success">Success</option>
-                    </select>
-                  </div>
-                  
-                  <button
-                    onClick={createAnnouncement}
-                    disabled={!newAnnouncement.title || !newAnnouncement.content}
-                    className="bg-minimal-white text-minimal-black hover:bg-minimal-gray-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium py-2 px-6 flex items-center space-x-2 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Create</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Announcements List */}
-            <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-6">
-              <h2 className="text-xl font-semibold text-minimal-white mb-4">All Announcements</h2>
-              {announcements.length === 0 ? (
-                <p className="text-minimal-gray-400">No announcements created yet.</p>
-              ) : (
-                <div className="space-y-4">
-                  {announcements.map((announcement) => (
-                    <div key={announcement.id} className="p-4 bg-minimal-gray-800 border border-minimal-gray-700">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="font-semibold text-minimal-white">{announcement.title}</h3>
-                            <span className="px-2 py-1 text-xs bg-minimal-gray-700 text-minimal-white">
-                              {announcement.type}
-                            </span>
-                          </div>
-                          <p className="text-minimal-gray-400 text-sm mb-2 leading-relaxed whitespace-pre-wrap">
-                            {announcement.content}
-                          </p>
-                          <p className="text-xs text-minimal-gray-500">
-                            {announcement.createdBy} • {new Date(announcement.createdAt).toLocaleString()}
-                          </p>
-                        </div>
-                        
-                        <button
-                          onClick={() => showConfirmDialog(
-                            'Delete Announcement',
-                            `Are you sure you want to delete "${announcement.title}"?`,
-                            () => deleteAnnouncement(announcement.id)
-                          )}
-                          className="text-minimal-gray-400 hover:text-minimal-white transition-colors p-1 ml-4"
-                          title="Delete announcement"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+                {securityKeys.length === 0 && (
+                  <div className="p-8 text-center text-gray-500">
+                    No security keys found. Generate some keys to get started.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
-      </main>
 
-      {/* Confirmation Dialog */}
-      {confirmDialog.show && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-minimal-gray-900 border border-minimal-gray-800 p-6 max-w-md w-full">
-            <div className="flex items-center space-x-3 mb-4">
-              <AlertTriangle className="w-6 h-6 text-minimal-white" />
-              <h3 className="text-lg font-semibold text-minimal-white">{confirmDialog.title}</h3>
-            </div>
-            
-            <p className="text-minimal-gray-400 mb-6 whitespace-pre-line leading-relaxed">{confirmDialog.message}</p>
-            
-            <div className="flex items-center justify-end space-x-3">
-              <button
-                onClick={hideConfirmDialog}
-                className="px-4 py-2 text-minimal-gray-400 hover:text-minimal-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={executeConfirmAction}
-                className={`px-4 py-2 font-medium transition-colors ${
-                  confirmDialog.type === 'danger' 
-                    ? 'bg-minimal-white text-minimal-black hover:bg-minimal-gray-200' 
-                    : 'bg-minimal-gray-700 hover:bg-minimal-gray-600 text-minimal-white'
-                }`}
-              >
-                {confirmDialog.type === 'danger' ? 'Delete' : 'Confirm'}
-              </button>
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="space-y-6">
+            <div className="border border-black">
+              <div className="bg-gray-50 border-b border-black p-4">
+                <h3 className="font-bold">REGISTERED USERS ({users.length})</h3>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {users.map((user) => (
+                  <div key={user.id} className="border-b border-gray-200 p-4 hover:bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <div className="flex items-center space-x-2">
+                            {user.type === 'admin' ? (
+                              <Shield className="w-5 h-5 text-red-600" />
+                            ) : (
+                              <User className="w-5 h-5 text-blue-600" />
+                            )}
+                            <span className="font-medium">{user.fullName}</span>
+                          </div>
+                          <span className="text-gray-600">@{user.username}</span>
+                          <span className={`px-2 py-1 text-xs font-medium border
+                            ${user.type === 'admin' 
+                              ? 'bg-red-50 border-red-200 text-red-800' 
+                              : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+                            {user.type.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {user.email} • Joined: {user.createdAt.toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {users.length === 0 && (
+                  <div className="p-8 text-center text-gray-500">
+                    No users found.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
