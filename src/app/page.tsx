@@ -100,6 +100,31 @@ export default function HomePage() {
     setError('✅ Demo users created! Try: admin@darksphere.com / admin123')
   }
 
+  // Debug function to show available keys
+  const debugShowAvailableKeys = () => {
+    console.log('🔍 === Security Keys Debug ===')
+    
+    // Show hardcoded keys
+    console.log('📋 Hardcoded Keys:')
+    Object.entries(SECURITY_KEYS).forEach(([key, data]) => {
+      console.log(`  - ${key} (${data.type}) - ${data.used ? 'USED' : 'AVAILABLE'}`)
+    })
+    
+    // Show admin-generated keys
+    const adminKeys = getStorageItem('adminSecurityKeys')
+    if (adminKeys) {
+      const keys = JSON.parse(adminKeys)
+      console.log('📋 Admin-Generated Keys:')
+      keys.forEach((key: any) => {
+        console.log(`  - ${key.keyValue} (${key.keyType}) - ${key.used ? 'USED by ' + (key.usedBy || 'unknown') : 'AVAILABLE'}`)
+      })
+    } else {
+      console.log('📋 No admin-generated keys found')
+    }
+    
+    setError('🔍 Check console for available keys')
+  }
+
   const validateSecurityKey = () => {
     setError('')
     if (!securityKey.trim()) {
@@ -107,9 +132,14 @@ export default function HomePage() {
       return
     }
     
+    console.log('🔑 Validating security key:', securityKey)
+    
     // Check hardcoded keys first
     const hardcodedKey = SECURITY_KEYS[securityKey as keyof typeof SECURITY_KEYS]
+    console.log('🔍 Hardcoded key found:', !!hardcodedKey)
+    
     if (hardcodedKey && !hardcodedKey.used) {
+      console.log('✅ Valid hardcoded key:', hardcodedKey.type)
       setKeyValidated(true)
       setUserType(hardcodedKey.type as 'admin' | 'user')
       setCurrentStep('register')
@@ -117,34 +147,42 @@ export default function HomePage() {
     }
     
     // Check admin-generated keys from localStorage
-    const adminKeys = localStorage.getItem('adminSecurityKeys')
+    const adminKeys = getStorageItem('adminSecurityKeys')
+    console.log('🔍 Admin keys storage:', !!adminKeys)
+    
     if (adminKeys) {
       const keys = JSON.parse(adminKeys)
+      console.log('🔍 Total admin keys found:', keys.length)
+      console.log('🔍 Available admin keys:', keys.filter((k: any) => !k.used).length)
+      
       const adminGeneratedKey = keys.find((key: any) => key.keyValue === securityKey && !key.used)
+      console.log('🔍 Matching admin key found:', !!adminGeneratedKey)
       
       if (adminGeneratedKey) {
+        console.log('✅ Valid admin-generated key:', adminGeneratedKey.keyType)
         setKeyValidated(true)
         setUserType(adminGeneratedKey.keyType as 'admin' | 'user')
         setCurrentStep('register')
         return
       }
-    }
-    
-    // Check if key exists but is already used
-    if (hardcodedKey && hardcodedKey.used) {
-      setError('This security key has already been used')
-      return
-    }
-    
-    if (adminKeys) {
-      const keys = JSON.parse(adminKeys)
+      
+      // Check if key exists but is used
       const usedKey = keys.find((key: any) => key.keyValue === securityKey && key.used)
       if (usedKey) {
-        setError('This security key has already been used')
+        console.log('❌ Key already used by:', usedKey.usedBy)
+        setError(`This security key has already been used${usedKey.usedBy ? ' by ' + usedKey.usedBy : ''}`)
         return
       }
     }
     
+    // Check if hardcoded key exists but is already used
+    if (hardcodedKey && hardcodedKey.used) {
+      console.log('❌ Hardcoded key already used')
+      setError('This security key has already been used')
+      return
+    }
+    
+    console.log('❌ Invalid security key')
     setError('Invalid security key')
   }
 
@@ -441,6 +479,13 @@ export default function HomePage() {
                 className="w-full bg-minimal-white text-minimal-black hover:bg-minimal-gray-200 font-medium py-3 px-4 transition-colors"
               >
                 Validate Key
+              </button>
+              
+              <button
+                onClick={debugShowAvailableKeys}
+                className="w-full text-minimal-gray-400 hover:text-minimal-white text-sm transition-colors mt-2"
+              >
+                🔍 Debug: Show Available Keys
               </button>
               
               <div className="text-center">
