@@ -78,8 +78,19 @@ export default function Dashboard() {
     }
     
     try {
-      const user = JSON.parse(userData)
-      console.log('✅ User data parsed:', user.username)
+      const userData = JSON.parse(userDataString)
+      console.log('✅ Raw user data:', userData)
+      
+      // Map database fields to expected format
+      const user = {
+        id: userData.id,
+        username: userData.username,
+        email: userData.email,
+        fullName: userData.full_name || userData.fullName || 'Unknown User',
+        type: userData.user_type || userData.type || 'user'
+      }
+      
+      console.log('✅ Mapped user data:', user)
       setUser(user)
     } catch (error) {
       console.error('❌ Error parsing user data:', error)
@@ -372,11 +383,14 @@ export default function Dashboard() {
               >
                 <div className="w-8 h-8 bg-minimal-white flex items-center justify-center">
                   <span className="text-sm font-bold text-minimal-black">
-                    {user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                    {user?.fullName ? 
+                      user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+                      : user?.username ? user.username.substring(0, 2).toUpperCase() 
+                      : 'U'}
                   </span>
                 </div>
                 <div className="text-left">
-                  <div className="text-sm font-medium text-minimal-white">{user.fullName}</div>
+                  <div className="text-sm font-medium text-minimal-white">{user?.fullName || user?.username || 'User'}</div>
                   {user.type === 'admin' && (
                     <div className="text-xs bg-minimal-gray-800 text-minimal-white px-2 py-0.5">
                       Admin
@@ -574,7 +588,10 @@ export default function Dashboard() {
                     <div className="flex space-x-3">
                       <div className="w-8 h-8 bg-minimal-white flex items-center justify-center">
                         <span className="text-xs font-bold text-minimal-black">
-                          {user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                          {user?.fullName ? 
+                            user.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() 
+                            : user?.username ? user.username.substring(0, 2).toUpperCase() 
+                            : 'U'}
                         </span>
                       </div>
                       <div className="flex-1 space-y-2">
