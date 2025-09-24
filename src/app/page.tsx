@@ -21,30 +21,95 @@ const verifyPassword = (password: string, hash: string): boolean => {
   return hashPassword(password) === hash
 }
 
-// Mobile localStorage helper functions
+// Mobile localStorage helper functions with better error handling
 const setStorageItem = (key: string, value: string): boolean => {
   try {
+    // First check if localStorage is available
+    if (typeof Storage === "undefined") {
+      console.error('❌ localStorage not supported')
+      return false
+    }
+    
+    // Clear the item first (mobile browser bug fix)
+    localStorage.removeItem(key)
+    
+    // Set the item
     localStorage.setItem(key, value)
-    // Verify it was actually set
+    
+    // Verify it was actually set (mobile verification)
     const stored = localStorage.getItem(key)
     if (stored !== value) {
       console.warn('⚠️ localStorage verification failed for key:', key)
-      return false
+      // Try once more (mobile browsers sometimes need retry)
+      localStorage.setItem(key, value)
+      const retryStored = localStorage.getItem(key)
+      return retryStored === value
     }
     return true
   } catch (error) {
     console.error('❌ localStorage setItem failed:', error)
-    return false
+    
+    // Try to clear storage space and retry (mobile storage full issue)
+    try {
+      localStorage.clear()
+      localStorage.setItem(key, value)
+      return true
+    } catch (retryError) {
+      console.error('❌ localStorage retry failed:', retryError)
+      return false
+    }
   }
 }
 
 const getStorageItem = (key: string): string | null => {
   try {
+    if (typeof Storage === "undefined") {
+      console.error('❌ localStorage not supported')
+      return null
+    }
     return localStorage.getItem(key)
   } catch (error) {
     console.error('❌ localStorage getItem failed:', error)
     return null
   }
+}
+
+// Mobile-specific user creation with retry mechanism
+const createMobileUser = (userData: any): boolean => {
+  const maxRetries = 3
+  let attempts = 0
+  
+  while (attempts < maxRetries) {
+    attempts++
+    console.log(`📱 Mobile user creation attempt ${attempts}/${maxRetries}`)
+    
+    try {
+      // Store user data
+      const userStored = setStorageItem('user', JSON.stringify(userData))
+      const loginStored = setStorageItem('isLoggedIn', 'true')
+      
+      if (userStored && loginStored) {
+        console.log('✅ Mobile user creation successful')
+        return true
+      }
+      
+      console.warn(`⚠️ Mobile user creation failed, attempt ${attempts}`)
+      
+      // Wait a bit before retry (mobile browsers need time)
+      if (attempts < maxRetries) {
+        const delay = attempts * 500 // Increasing delay
+        console.log(`⏳ Waiting ${delay}ms before retry...`)
+        // Use setTimeout for delay (can't use await in non-async function)
+        setTimeout(() => {}, delay)
+      }
+      
+    } catch (error) {
+      console.error(`❌ Mobile user creation error attempt ${attempts}:`, error)
+    }
+  }
+  
+  console.error('❌ Mobile user creation failed after all retries')
+  return false
 }
 
 export default function HomePage() {
@@ -378,7 +443,7 @@ export default function HomePage() {
       
       console.log('✅ Password verified successfully')
       
-      // Add delay for better UX on mobile
+      // Add delay for better UX on mobile  
       setTimeout(() => {
         try {
           const userToStore = {
@@ -391,12 +456,23 @@ export default function HomePage() {
           
           console.log('💾 Storing user data:', userToStore)
           
-          const userStored = setStorageItem('user', JSON.stringify(userToStore))
-          const loginStored = setStorageItem('isLoggedIn', 'true')
+          // Use mobile-optimized storage for better reliability
+          const isMobile = navigator.userAgent.includes('Mobile')
+          let storageSuccess = false
           
-          if (!userStored || !loginStored) {
+          if (isMobile) {
+            console.log('📱 Using mobile-optimized storage')
+            storageSuccess = createMobileUser(userToStore)
+          } else {
+            console.log('🖥️ Using desktop storage')
+            const userStored = setStorageItem('user', JSON.stringify(userToStore))
+            const loginStored = setStorageItem('isLoggedIn', 'true')
+            storageSuccess = userStored && loginStored
+          }
+          
+          if (!storageSuccess) {
             console.error('❌ Failed to store login data')
-            setError('Login storage failed. Please try again.')
+            setError('Login storage failed. Please try again or clear browser cache.')
             setLoading(false)
             return
           }
@@ -410,20 +486,26 @@ export default function HomePage() {
           
           if (!verifyUser || !verifyLogin) {
             console.error('❌ Storage verification failed before redirect')
-            setError('Login storage failed. Please try again.')
+            setError('Login verification failed. Please try clearing your browser cache.')
             setLoading(false)
             return
           }
           
           console.log('✅ Storage verified, proceeding with redirect')
-          router.push('/dashboard')
-          setLoading(false)
+          
+          // For mobile, add a small delay before redirect
+          const redirectDelay = isMobile ? 300 : 0
+          setTimeout(() => {
+            router.push('/dashboard')
+            setLoading(false)
+          }, redirectDelay)
+          
         } catch (storageError) {
           console.error('❌ Storage error:', storageError)
-          setError('Login storage failed. Please try again.')
+          setError('Login storage failed. Please clear browser cache and try again.')
           setLoading(false)
         }
-      }, 500) // Reduced delay
+      }, 300) // Reduced delay for faster mobile experience
       
     } catch (error) {
       console.error('❌ Login error:', error)

@@ -57,6 +57,26 @@ export default function UsersDirectory() {
 
     setCurrentUser(JSON.parse(userData))
     loadUsers()
+    
+    // Set up polling to check for new users every 5 seconds
+    const userRefreshInterval = setInterval(() => {
+      loadUsers()
+    }, 5000)
+    
+    // Listen for storage changes (when new users register)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'adminUsersList') {
+        console.log('🔄 New user detected, refreshing user list')
+        loadUsers()
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    
+    return () => {
+      clearInterval(userRefreshInterval)
+      window.removeEventListener('storage', handleStorageChange)
+    }
   }, [router])
 
   useEffect(() => {

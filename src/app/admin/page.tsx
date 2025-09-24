@@ -103,6 +103,31 @@ export default function AdminDashboard() {
     loadSecurityKeys()
     loadUsers()
     loadAnnouncements()
+    
+    // Set up polling to check for new users every 3 seconds
+    const refreshInterval = setInterval(() => {
+      loadUsers()
+      loadSecurityKeys() // Also refresh keys to see usage
+    }, 3000)
+    
+    // Listen for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'adminUsersList') {
+        console.log('🔄 Admin: New user detected, refreshing')
+        loadUsers()
+      }
+      if (e.key === 'adminSecurityKeys') {
+        console.log('🔄 Admin: Security keys updated, refreshing')
+        loadSecurityKeys()
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    
+    return () => {
+      clearInterval(refreshInterval)
+      window.removeEventListener('storage', handleStorageChange)
+    }
   }, [router])
 
   const loadSecurityKeys = () => {
