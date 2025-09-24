@@ -92,66 +92,72 @@ export default function Dashboard() {
       
       console.log('✅ Mapped user data:', user)
       setUser(user)
+      
+      // Load community posts from database API
+      loadCommunityPosts()
+      
     } catch (error) {
       console.error('❌ Error parsing user data:', error)
       router.push('/')
       return
     }
     
-    // Load posts from localStorage or create sample posts
-    const savedPosts = localStorage.getItem('posts')
-    if (savedPosts) {
-      setPosts(JSON.parse(savedPosts))
-    } else {
-      // Create some sample posts
-      const samplePosts: Post[] = [
-        {
-          id: '1',
-          content: 'Welcome to DarkSphere! 🌟 This is the future of social media. Share your thoughts and connect with amazing people.',
-          author: 'DarkSphere Team',
-          authorId: 'system',
-          timestamp: new Date(Date.now() - 3600000), // 1 hour ago
-          likes: 5,
-          comments: 2,
-          likedBy: [],
-          replies: []
-        },
-        {
-          id: '2',
-          content: 'Just built my first React component today! The feeling when your code finally works is unmatched 🚀',
-          author: 'CodeMaster',
-          authorId: 'user2',
-          timestamp: new Date(Date.now() - 7200000), // 2 hours ago
-          likes: 12,
-          comments: 3,
-          likedBy: [],
-          replies: []
-        },
-        {
-          id: '3',
-          content: 'Coffee ☕ + Code 💻 = Perfect morning! What\'s your favorite programming language?',
-          author: 'DevLife',
-          authorId: 'user3',
-          timestamp: new Date(Date.now() - 10800000), // 3 hours ago
-          likes: 8,
-          comments: 5,
-          likedBy: [],
-          replies: []
-        }
-      ]
-      setPosts(samplePosts)
-      localStorage.setItem('posts', JSON.stringify(samplePosts))
-    }
-    
-    // Load announcements and dismissed announcements
+    // Load announcements
     loadAnnouncements()
     
-    // Load comments
+    // Load comments from localStorage (temporary until we implement comments API)
     const savedComments = localStorage.getItem('comments')
     if (savedComments) {
       setComments(JSON.parse(savedComments))
     }
   }, [router])
+
+  // Load community posts from database API
+  const loadCommunityPosts = async () => {
+    try {
+      console.log('🔄 Loading community posts from database...')
+      const response = await fetch('/api/posts')
+      const data = await response.json()
+      
+      if (response.ok && data.posts) {
+        // Map the database posts to our Post interface
+        const formattedPosts = data.posts.map((post: any) => ({
+          id: post.id,
+          content: post.content,
+          author: post.author?.full_name || post.author?.username || 'Unknown User',
+          authorId: post.author_id,
+          timestamp: new Date(post.created_at),
+          likes: post.likes_count || 0,
+          comments: post.comments_count || 0,
+          likedBy: [],
+          replies: []
+        }))
+        
+        setPosts(formattedPosts)
+        console.log(`✅ Loaded ${formattedPosts.length} community posts`)
+      } else {
+        console.error('Failed to load posts:', data.error)
+      }
+    } catch (error) {
+      console.error('Error loading community posts:', error)
+    }
+  }
+
+  // Set up real-time polling for community posts
+  useEffect(() => {
+    if (!user) return
+    
+    // Initial load
+    loadCommunityPosts()
+    
+    // Set up polling every 5 seconds to show new posts from other users
+    const pollInterval = setInterval(() => {
+      console.log('🔄 Polling for new community posts...')
+      loadCommunityPosts()
+    }, 5000)
+    
+    return () => clearInterval(pollInterval)
+  }, [user])
 
   // Also listen for storage changes to sync across tabs
   useEffect(() => {
@@ -222,25 +228,40 @@ export default function Dashboard() {
     
     setLoading(true)
     
-    const post: Post = {
-      id: Date.now().toString(),
-      content: newPost,
-      author: user.fullName || user.username,
-      authorId: user.id,
-      timestamp: new Date(),
-      likes: 0,
-      comments: 0,
-      likedBy: [],
-      replies: []
+    try {
+      console.log('📝 Creating new community post...')
+      
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: newPost.trim(),
+          authorId: user.id
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok && data.post) {
+        console.log('✅ Post created successfully, refreshing community feed')
+        
+        // Clear the input
+        setNewPost('')
+        
+        // Reload the community posts to show the new post
+        await loadCommunityPosts()
+        
+      } else {
+        console.error('Failed to create post:', data.error)
+      }
+      
+    } catch (error) {
+      console.error('Error creating post:', error)
+    } finally {
+      setLoading(false)
     }
-    
-    // Add to the beginning of the posts array (newest first)
-    const updatedPosts = [post, ...posts]
-    setPosts(updatedPosts)
-    localStorage.setItem('posts', JSON.stringify(updatedPosts))
-    
-    setNewPost('')
-    setLoading(false)
   }
 
   const handleLike = (postId: string) => {
