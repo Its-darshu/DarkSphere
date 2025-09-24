@@ -288,22 +288,49 @@ export default function Dashboard() {
     localStorage.setItem('posts', JSON.stringify(updatedPosts))
   }
 
-  const handleDelete = (postId: string) => {
+  const handleDelete = async (postId: string) => {
     if (!user) return
     
-    const updatedPosts = posts.filter(post => {
-      // Users can delete their own posts, admins can delete any post
-      if (user.type === 'admin') return post.id !== postId
-      return post.id !== postId && post.authorId === user.id
-    })
+    // Show confirmation dialog
+    const confirmDelete = confirm('Are you sure you want to delete this post? This action cannot be undone.')
+    if (!confirmDelete) return
     
-    // Also delete related comments
-    const updatedComments = comments.filter(comment => comment.postId !== postId)
-    setComments(updatedComments)
-    localStorage.setItem('comments', JSON.stringify(updatedComments))
-    
-    setPosts(updatedPosts)
-    localStorage.setItem('posts', JSON.stringify(updatedPosts))
+    try {
+      console.log(`🗑️ Deleting post ${postId}...`)
+      
+      const response = await fetch(`/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          userType: user.type
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        console.log('✅ Post deleted successfully')
+        
+        // Reload the community posts to reflect the deletion
+        await loadCommunityPosts()
+        
+        // Also clear any related comments from localStorage (temporary)
+        const updatedComments = comments.filter(comment => comment.postId !== postId)
+        setComments(updatedComments)
+        localStorage.setItem('comments', JSON.stringify(updatedComments))
+        
+      } else {
+        console.error('Failed to delete post:', data.error)
+        alert(`Failed to delete post: ${data.error}`)
+      }
+      
+    } catch (error) {
+      console.error('Error deleting post:', error)
+      alert('Error deleting post. Please try again.')
+    }
   }
   
   const handleComment = (postId: string) => {
