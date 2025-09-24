@@ -328,8 +328,11 @@ export default function Dashboard() {
   }
 
   const handleLogout = () => {
+    // Clear all authentication data
     localStorage.removeItem('isLoggedIn')
     localStorage.removeItem('user')
+    localStorage.removeItem('authToken')
+    console.log('✅ User logged out, all tokens cleared')
     router.push('/')
   }
 

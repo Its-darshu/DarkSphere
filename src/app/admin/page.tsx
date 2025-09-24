@@ -12,7 +12,8 @@ import {
   User,
   Copy,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  Megaphone
 } from 'lucide-react'
 
 interface User {
@@ -33,6 +34,15 @@ interface SecurityKey {
   createdAt: Date
 }
 
+interface Announcement {
+  id: string
+  title: string
+  content: string
+  type: 'info' | 'warning' | 'success'
+  createdAt: Date
+  createdBy: string
+}
+
 interface ConfirmDialog {
   show: boolean
   title: string
@@ -44,7 +54,7 @@ interface ConfirmDialog {
 export default function AdminDashboard() {
   const router = useRouter()
   const [currentUser, setCurrentUser] = useState<User | null>(null)
-  const [activeTab, setActiveTab] = useState<'keys' | 'users'>('keys')
+  const [activeTab, setActiveTab] = useState<'keys' | 'users' | 'announcements'>('keys')
   
   // Security keys state
   const [securityKeys, setSecurityKeys] = useState<SecurityKey[]>([])
@@ -55,6 +65,14 @@ export default function AdminDashboard() {
   // Users state
   const [users, setUsers] = useState<User[]>([])
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  
+  // Announcements state
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [newAnnouncement, setNewAnnouncement] = useState({
+    title: '',
+    content: '',
+    type: 'info' as 'info' | 'warning' | 'success'
+  })
   
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({
@@ -92,11 +110,13 @@ export default function AdminDashboard() {
     // Load initial data
     loadSecurityKeys()
     loadUsers()
+    loadAnnouncements()
     
     // Set up polling for real-time updates
     const interval = setInterval(() => {
       loadSecurityKeys()
       loadUsers()
+      loadAnnouncements()
     }, 3000)
     
     return () => clearInterval(interval)
@@ -241,12 +261,89 @@ export default function AdminDashboard() {
     hideConfirmDialog()
   }
 
+  // Announcements functions
+  const loadAnnouncements = async () => {
+    try {
+      const response = await fetch('/api/announcements')
+      const data = await response.json()
+      
+      if (response.ok && data.announcements) {
+        setAnnouncements(data.announcements.map((announcement: any) => ({
+          id: announcement.id,
+          title: announcement.title,
+          content: announcement.content,
+          type: announcement.announcement_type,
+          createdAt: new Date(announcement.created_at),
+          createdBy: announcement.author?.username || announcement.created_by
+        })))
+      }
+    } catch (error) {
+      console.error('Failed to load announcements:', error)
+    }
+  }
+
+  const createAnnouncement = async () => {
+    if (!newAnnouncement.title || !newAnnouncement.content || !currentUser) return
+    
+    try {
+      const response = await fetch('/api/announcements', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: newAnnouncement.title,
+          content: newAnnouncement.content,
+          type: newAnnouncement.type,
+          createdBy: currentUser.id
+        })
+      })
+
+      if (response.ok) {
+        // Reload announcements to show the new one
+        await loadAnnouncements()
+        // Reset form
+        setNewAnnouncement({
+          title: '',
+          content: '',
+          type: 'info'
+        })
+        console.log('✅ Announcement created successfully')
+      } else {
+        const data = await response.json()
+        console.error('Failed to create announcement:', data.error)
+      }
+    } catch (error) {
+      console.error('Error creating announcement:', error)
+    }
+  }
+
+  const deleteAnnouncement = async (announcementId: string, announcementTitle: string) => {
+    try {
+      const response = await fetch(`/api/announcements/${announcementId}`, {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        // Reload announcements to reflect the deletion
+        await loadAnnouncements()
+        console.log(`✅ Successfully deleted announcement: ${announcementTitle}`)
+      } else {
+        const data = await response.json()
+        console.error('Failed to delete announcement:', data.error)
+      }
+    } catch (error) {
+      console.error('Error deleting announcement:', error)
+    }
+  }
+
   const adminStats = {
     totalUsers: users.length,
     totalAdmins: users.filter(user => user.type === 'admin').length,
     totalKeys: securityKeys.length,
     usedKeys: securityKeys.filter(key => key.used).length,
-    unusedKeys: securityKeys.filter(key => !key.used).length
+    unusedKeys: securityKeys.filter(key => !key.used).length,
+    totalAnnouncements: announcements.length
   }
 
   if (!currentUser) {
@@ -280,7 +377,7 @@ export default function AdminDashboard() {
 
       <div className="max-w-6xl mx-auto p-6">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
           <div className="bg-gray-50 border border-black p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Users className="w-5 h-5" />
@@ -320,6 +417,14 @@ export default function AdminDashboard() {
             </div>
             <div className="text-2xl font-bold">{adminStats.unusedKeys}</div>
           </div>
+
+          <div className="bg-gray-50 border border-black p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Megaphone className="w-5 h-5" />
+              <span className="text-sm font-medium">ANNOUNCEMENTS</span>
+            </div>
+            <div className="text-2xl font-bold">{adminStats.totalAnnouncements}</div>
+          </div>
         </div>
 
         {/* Tab Navigation */}
@@ -343,6 +448,16 @@ export default function AdminDashboard() {
           >
             <Users className="w-4 h-4 inline mr-2" />
             USER MANAGEMENT
+          </button>
+          <button
+            onClick={() => setActiveTab('announcements')}
+            className={`flex-1 py-3 px-4 text-sm font-medium transition-colors border-l border-black
+              ${activeTab === 'announcements' 
+                ? 'bg-black text-white' 
+                : 'bg-white text-black hover:bg-gray-100'}`}
+          >
+            <Megaphone className="w-4 h-4 inline mr-2" />
+            ANNOUNCEMENTS
           </button>
         </div>
 
@@ -528,6 +643,113 @@ export default function AdminDashboard() {
                 {users.length === 0 && (
                   <div className="p-8 text-center text-gray-500">
                     No users found.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Announcements Tab */}
+        {activeTab === 'announcements' && (
+          <div className="space-y-6">
+            {/* Create Announcement */}
+            <div className="bg-gray-50 border border-black p-6">
+              <h3 className="text-xl font-bold mb-4">CREATE ANNOUNCEMENT</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Title</label>
+                  <input
+                    type="text"
+                    value={newAnnouncement.title}
+                    onChange={(e) => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
+                    placeholder="Announcement title..."
+                    className="w-full px-4 py-2 border border-black bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Content</label>
+                  <textarea
+                    value={newAnnouncement.content}
+                    onChange={(e) => setNewAnnouncement({...newAnnouncement, content: e.target.value})}
+                    placeholder="Write your announcement content..."
+                    rows={4}
+                    className="w-full px-4 py-3 border border-black bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black resize-none"
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <label className="block text-sm font-medium text-black">Type</label>
+                    <select
+                      value={newAnnouncement.type}
+                      onChange={(e) => setNewAnnouncement({...newAnnouncement, type: e.target.value as 'info' | 'warning' | 'success'})}
+                      className="px-3 py-2 border border-black bg-white text-black focus:outline-none focus:ring-2 focus:ring-black"
+                    >
+                      <option value="info">Info</option>
+                      <option value="warning">Warning</option>
+                      <option value="success">Success</option>
+                    </select>
+                  </div>
+                  
+                  <button
+                    onClick={createAnnouncement}
+                    disabled={!newAnnouncement.title || !newAnnouncement.content}
+                    className="bg-black text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium py-2 px-6 flex items-center space-x-2 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>CREATE</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Announcements List */}
+            <div className="border border-black">
+              <div className="bg-gray-50 border-b border-black p-4">
+                <h3 className="font-bold">ALL ANNOUNCEMENTS ({announcements.length})</h3>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {announcements.map((announcement) => (
+                  <div key={announcement.id} className="border-b border-gray-200 p-4 hover:bg-gray-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h4 className="font-semibold text-black">{announcement.title}</h4>
+                          <span className={`px-2 py-1 text-xs font-medium border ${
+                            announcement.type === 'info' ? 'bg-blue-50 border-blue-200 text-blue-800' :
+                            announcement.type === 'warning' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
+                            'bg-green-50 border-green-200 text-green-800'
+                          }`}>
+                            {announcement.type.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 text-sm mb-2 leading-relaxed whitespace-pre-wrap">
+                          {announcement.content}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          By {announcement.createdBy} • {new Date(announcement.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      
+                      <button
+                        onClick={() => showConfirmDialog(
+                          'Delete Announcement',
+                          `Are you sure you want to delete "${announcement.title}"?`,
+                          () => deleteAnnouncement(announcement.id, announcement.title)
+                        )}
+                        className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 transition-colors ml-4"
+                        title="Delete announcement"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {announcements.length === 0 && (
+                  <div className="p-8 text-center text-gray-500">
+                    No announcements found. Create your first announcement above.
                   </div>
                 )}
               </div>

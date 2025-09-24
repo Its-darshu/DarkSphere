@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Key } from 'lucide-react'
 
@@ -16,6 +16,7 @@ export default function HomePage() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [keyValidation, setKeyValidation] = useState<{
@@ -29,6 +30,46 @@ export default function HomePage() {
     message: ''
   })
   const router = useRouter()
+
+  // Check for existing login token on component mount
+  useEffect(() => {
+    const checkExistingLogin = async () => {
+      const token = localStorage.getItem('authToken')
+      if (token) {
+        try {
+          setLoading(true)
+          const response = await fetch('/api/auth/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ token })
+          })
+
+          if (response.ok) {
+            const data = await response.json()
+            // Store user data and redirect to dashboard
+            localStorage.setItem('user', JSON.stringify(data.user))
+            console.log('✅ Auto-login successful:', data.user.username)
+            router.push('/dashboard')
+            return
+          } else {
+            // Token is invalid, remove it
+            localStorage.removeItem('authToken')
+            localStorage.removeItem('user')
+          }
+        } catch (error) {
+          console.error('Auto-login failed:', error)
+          localStorage.removeItem('authToken')
+          localStorage.removeItem('user')
+        } finally {
+          setLoading(false)
+        }
+      }
+    }
+
+    checkExistingLogin()
+  }, [router])
 
   // Validate security key in real-time when user types
   const validateSecurityKey = async (key: string) => {
@@ -113,7 +154,11 @@ export default function HomePage() {
       
       // Only send security key for registration
       const requestBody = mode === 'login' 
-        ? { username: formData.username, password: formData.password }
+        ? { 
+            username: formData.username, 
+            password: formData.password,
+            rememberMe: rememberMe
+          }
         : formData
 
       const response = await fetch(endpoint, {
@@ -144,9 +189,15 @@ export default function HomePage() {
       }
 
       if (data.success && data.user) {
-        // Store user session in localStorage for client-side navigation
+        // Store user session and token in localStorage for persistent login
         localStorage.setItem('user', JSON.stringify(data.user))
         localStorage.setItem('isLoggedIn', 'true')
+        
+        // Store auth token if provided (for login)
+        if (data.token) {
+          localStorage.setItem('authToken', data.token)
+          console.log('✅ Auth token stored for persistent login')
+        }
         
         console.log('✅ Authentication successful, redirecting to dashboard...')
         router.push('/dashboard')
@@ -423,6 +474,22 @@ export default function HomePage() {
                   )}
                 </div>
               </>
+            )}
+
+            {/* Remember Me Checkbox (Login only) */}
+            {mode === 'login' && (
+              <div className="flex items-center">
+                <input
+                  id="rememberMe"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-black focus:ring-black border-gray-300 rounded"
+                />
+                <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-600">
+                  Keep me logged in for 30 days
+                </label>
+              </div>
             )}
 
             {/* Error Message */}

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
 import { Database } from '@/lib/database'
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json()
+    const { username, password, rememberMe = false } = await request.json()
 
     if (!username || !password) {
       return NextResponse.json({ error: 'Username and password are required' }, { status: 400 })
@@ -22,11 +23,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    // Return user data (excluding password)
+    // Generate JWT token
+    const tokenExpiry = rememberMe ? '30d' : '24h' // 30 days if remember me, 24 hours otherwise
+    const token = jwt.sign(
+      { 
+        userId: user.id,
+        username: user.username,
+        userType: user.user_type
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: tokenExpiry }
+    )
+
+    // Return user data and token (excluding password)
     const { password_hash, ...userWithoutPassword } = user
     return NextResponse.json({
       success: true,
-      user: userWithoutPassword
+      user: userWithoutPassword,
+      token,
+      expiresIn: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000 // milliseconds
     })
 
   } catch (error) {
