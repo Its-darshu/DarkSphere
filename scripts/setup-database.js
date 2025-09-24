@@ -130,6 +130,26 @@ async function setupDatabase() {
     `
     console.log('✅ Initial security keys inserted')
 
+    // Create a test admin user for immediate login
+    const bcrypt = await import('bcryptjs')
+    const hashedPassword = await bcrypt.hash('admin123', 12)
+    
+    await sql`
+      INSERT INTO users (username, email, password_hash, full_name, user_type) VALUES 
+      ('admin', 'admin@darksphere.com', ${hashedPassword}, 'Admin User', 'admin')
+      ON CONFLICT (username) DO NOTHING;
+    `
+    console.log('✅ Test admin user created (admin/admin123)')
+
+    const userHashedPassword = await bcrypt.hash('user123', 12)
+    
+    await sql`
+      INSERT INTO users (username, email, password_hash, full_name, user_type) VALUES 
+      ('testuser', 'user@darksphere.com', ${userHashedPassword}, 'Test User', 'user')
+      ON CONFLICT (username) DO NOTHING;
+    `
+    console.log('✅ Test regular user created (testuser/user123)')
+
     console.log('🎉 Database setup completed successfully with Neon serverless driver!')
     console.log('Available security keys:')
     console.log('- ADMIN-SUPER-ACCESS (admin)')
