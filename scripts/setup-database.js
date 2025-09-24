@@ -1,12 +1,15 @@
-import { sql } from '@vercel/postgres'
+import { neon } from '@neondatabase/serverless'
 import dotenv from 'dotenv'
 
 // Load environment variables
 dotenv.config({ path: '.env.local' })
 
+// Initialize Neon database connection
+const sql = neon(process.env.DATABASE_URL)
+
 async function setupDatabase() {
   try {
-    console.log('🚀 Setting up DarkSphere database...')
+    console.log('🚀 Setting up DarkSphere database with Neon serverless driver...')
     
     // Create users table
     await sql`
@@ -120,12 +123,14 @@ async function setupDatabase() {
       ('USER-WELCOME-2025', 'user'),
       ('ADMIN-FOUNDER-KEY', 'admin'),
       ('USER-MOBILE-TEST', 'user'),
-      ('ADMIN-DB-SETUP', 'admin')
+      ('ADMIN-DB-SETUP', 'admin'),
+      ('NEON-OPTIMIZED-ADMIN', 'admin'),
+      ('NEON-OPTIMIZED-USER', 'user')
       ON CONFLICT (key_value) DO NOTHING;
     `
     console.log('✅ Initial security keys inserted')
 
-    console.log('🎉 Database setup completed successfully!')
+    console.log('🎉 Database setup completed successfully with Neon serverless driver!')
     console.log('Available security keys:')
     console.log('- ADMIN-SUPER-ACCESS (admin)')
     console.log('- USER-BETA-TESTER (user)')
@@ -133,6 +138,8 @@ async function setupDatabase() {
     console.log('- ADMIN-FOUNDER-KEY (admin)')
     console.log('- USER-MOBILE-TEST (user)')
     console.log('- ADMIN-DB-SETUP (admin)')
+    console.log('- NEON-OPTIMIZED-ADMIN (admin)')
+    console.log('- NEON-OPTIMIZED-USER (user)')
 
   } catch (error) {
     console.error('❌ Database setup failed:', error)
