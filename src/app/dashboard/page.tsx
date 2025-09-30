@@ -174,6 +174,7 @@ export default function Dashboard() {
     
     // Initial load
     loadCommunityPosts()
+    loadAnnouncements() // Also load announcements here
     
     // Set up polling every 5 seconds to show new posts from other users
     const pollInterval = setInterval(() => {
@@ -181,15 +182,22 @@ export default function Dashboard() {
       loadCommunityPosts()
     }, 5000)
     
-    return () => clearInterval(pollInterval)
+    // Set up polling for announcements every 30 seconds
+    const announcementPollInterval = setInterval(() => {
+      console.log('🔄 Polling for new announcements...')
+      loadAnnouncements()
+    }, 30000)
+    
+    return () => {
+      clearInterval(pollInterval)
+      clearInterval(announcementPollInterval)
+    }
   }, [user])
 
   // Also listen for storage changes to sync across tabs
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'globalAnnouncements') {
-        loadAnnouncements()
-      } else if (e.key === 'dismissedAnnouncements') {
+      if (e.key === 'dismissedAnnouncements') {
         const dismissed = e.newValue ? JSON.parse(e.newValue) : []
         setDismissedAnnouncements(dismissed)
       }
@@ -199,13 +207,33 @@ export default function Dashboard() {
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
-  const loadAnnouncements = () => {
-    const savedAnnouncements = localStorage.getItem('globalAnnouncements')
-    if (savedAnnouncements) {
-      setAnnouncements(JSON.parse(savedAnnouncements))
+  const loadAnnouncements = async () => {
+    try {
+      console.log('🔄 Loading announcements from database...')
+      const response = await fetch('/api/announcements')
+      const data = await response.json()
+      
+      if (response.ok && data.announcements) {
+        // Map the database announcements to our interface
+        const formattedAnnouncements = data.announcements.map((announcement: any) => ({
+          id: announcement.id,
+          title: announcement.title,
+          content: announcement.content,
+          type: announcement.announcement_type,
+          createdAt: new Date(announcement.created_at),
+          createdBy: announcement.created_by
+        }))
+        
+        setAnnouncements(formattedAnnouncements)
+        console.log(`✅ Loaded ${formattedAnnouncements.length} announcements`)
+      } else {
+        console.error('Failed to load announcements:', data.error)
+      }
+    } catch (error) {
+      console.error('Error loading announcements:', error)
     }
     
-    // Load dismissed announcements immediately after loading announcements
+    // Load dismissed announcements from localStorage
     const dismissed = localStorage.getItem('dismissedAnnouncements')
     if (dismissed) {
       setDismissedAnnouncements(JSON.parse(dismissed))
