@@ -41,13 +41,16 @@ interface User {
 
 interface Post {
   id: string
+  title: string
   content: string
-  author: string
+  user?: {
+    username: string
+    fullName: string
+  }
   authorId: string
-  timestamp: Date
-  likes: number
-  comments: number
-  likedBy: string[]
+  createdAt: string
+  likesCount: number
+  commentsCount: number
 }
 
 export default function ProfilePage() {
@@ -158,13 +161,16 @@ export default function ProfilePage() {
         
         const formattedPosts: Post[] = userPosts.map((post: any) => ({
           id: post.id,
+          title: post.title || '',
           content: post.content,
-          author: profileUser.username,
+          user: {
+            username: profileUser.username,
+            fullName: profileUser.fullName
+          },
           authorId: post.author_id,
-          timestamp: new Date(post.created_at),
-          likes: parseInt(post.likes_count) || 0,
-          comments: parseInt(post.comments_count) || 0,
-          likedBy: []
+          createdAt: post.created_at,
+          likesCount: parseInt(post.likes_count) || 0,
+          commentsCount: parseInt(post.comments_count) || 0
         }))
         
         setPosts(formattedPosts)
@@ -199,7 +205,7 @@ export default function ProfilePage() {
         setPosts(prevPosts => 
           prevPosts.map(post => 
             post.id === postId 
-              ? { ...post, likes: data.likesCount }
+              ? { ...post, likesCount: data.likesCount }
               : post
           )
         )
@@ -242,57 +248,42 @@ export default function ProfilePage() {
       }
     }
     
-    // Update in admin users list
-    const adminUsersList = localStorage.getItem('adminUsersList')
-    if (adminUsersList) {
-      const users: User[] = JSON.parse(adminUsersList)
-      const userIndex = users.findIndex(u => u.id === profileUser.id)
-      if (userIndex !== -1) {
-        users[userIndex] = updatedUser
-        localStorage.setItem('adminUsersList', JSON.stringify(users))
-      }
-    }
-    
-    // Update current user session if editing own profile
-    if (currentUser.id === profileUser.id) {
-      localStorage.setItem('user', JSON.stringify(updatedUser))
-      setCurrentUser(updatedUser)
-    }
-    
     setProfileUser(updatedUser)
+    setCurrentUser(updatedUser)
+    localStorage.setItem('user', JSON.stringify(updatedUser))
     setIsEditing(false)
   }
 
-  const formatTime = (timestamp: Date) => {
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp)
     const now = new Date()
-    const diff = now.getTime() - new Date(timestamp).getTime()
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(diff / 3600000)
-    const days = Math.floor(diff / 86400000)
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
     
-    if (minutes < 1) return 'now'
-    if (minutes < 60) return `${minutes}m`
-    if (hours < 24) return `${hours}h`
-    return `${days}d`
+    if (diffInMinutes < 1) return 'Just now'
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
+    return `${Math.floor(diffInMinutes / 1440)}d ago`
   }
 
   const getSocialIcon = (platform: string) => {
     switch (platform) {
-      case 'github': return <Github className="w-4 h-4" />
-      case 'linkedin': return <Linkedin className="w-4 h-4" />
-      case 'twitter': return <Twitter className="w-4 h-4" />
-      case 'instagram': return <Instagram className="w-4 h-4" />
-      default: return <ExternalLink className="w-4 h-4" />
+      case 'github':
+        return <Github className="w-4 h-4 flex-shrink-0" />
+      case 'linkedin':
+        return <Linkedin className="w-4 h-4 flex-shrink-0" />
+      case 'twitter':
+        return <Twitter className="w-4 h-4 flex-shrink-0" />
+      case 'instagram':
+        return <Instagram className="w-4 h-4 flex-shrink-0" />
+      default:
+        return <ExternalLink className="w-4 h-4 flex-shrink-0" />
     }
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading...</p>
-        </div>
+        <div className="text-white">Loading profile...</div>
       </div>
     )
   }
@@ -546,44 +537,91 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Posts */}
+          {/* Posts Section */}
           <div className="lg:col-span-3 space-y-4 order-1 lg:order-2">
-            <div className="bg-black border border-white p-4">
-              <h3 className="text-lg font-semibold text-white mb-4">
-                Posts ({posts.length})
-              </h3>
+            <div className="bg-black border border-white p-4 lg:p-6">
+              <h2 className="text-lg lg:text-xl font-bold text-white mb-4">Posts by {profileUser.username}</h2>
               
-              {posts.length === 0 ? (
-                <div className="bg-black border border-white p-6 lg:p-8 text-center">
-                  <p className="text-gray-400">No posts yet.</p>
-                </div>
-              ) : (
+              {posts.length > 0 ? (
                 <div className="space-y-4">
                   {posts.map((post) => (
-                    <div key={post.id} className="bg-black border border-white p-4">
-                      <div className="flex items-start space-x-3 mb-3">
-                        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-white flex items-center justify-center flex-shrink-0">
-                          <span className="text-black font-black text-xs lg:text-sm">
-                            {profileUser.fullName.split(' ').map(n => n[0]).join('').substring(0, 2)}
-                          </span>
+                    <div
+                      key={post.id}
+                      className="bg-gray-900 border border-gray-700 p-3 lg:p-4 hover:border-gray-600 transition-colors"
+                    >
+                      <div className="flex items-start space-x-2 lg:space-x-3 mb-3">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 bg-white text-black flex items-center justify-center font-bold text-sm lg:text-base">
+                          {post.user?.username?.[0]?.toUpperCase() || 'U'}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <span className="font-medium text-white truncate">{post.author}</span>
-                            <span className="text-xs text-gray-500 flex-shrink-0">{formatTime(post.timestamp)}</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 text-sm">
+                            <span className="font-semibold text-white truncate">
+                              @{post.user?.username}
+                            </span>
+                            <span className="text-gray-400 text-xs">
+                              {formatTime(post.createdAt)}
+                            </span>
                           </div>
-                          <p className="text-white leading-relaxed whitespace-pre-wrap break-words">
-                            {post.content}
-                          </p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-4 text-sm text-gray-400 ml-11 lg:ml-13">
-                        <span>{post.likes} likes</span>
-                        <span>{post.comments} comments</span>
+                      <div className="mb-3">
+                        {post.title && (
+                          <h3 className="font-semibold text-white mb-2 text-sm lg:text-base">
+                            {post.title}
+                          </h3>
+                        )}
+                        <p className="text-gray-300 text-sm leading-relaxed">
+                          {post.content}
+                        </p>
+                      </div>
+
+                      {/* Post Actions */}
+                      <div className="flex items-center justify-between pt-2 border-t border-gray-700">
+                        <div className="flex items-center space-x-4">
+                          <button
+                            onClick={() => handleLikePost(post.id)}
+                            disabled={likingPost === post.id}
+                            className={`flex items-center space-x-1 text-sm transition-colors ${
+                              likedPosts.has(post.id)
+                                ? 'text-red-500 hover:text-red-400'
+                                : 'text-gray-400 hover:text-white'
+                            } ${likingPost === post.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <Heart
+                              className={`w-4 h-4 ${likedPosts.has(post.id) ? 'fill-current' : ''}`}
+                            />
+                            <span>{post.likesCount || 0}</span>
+                          </button>
+                          
+                          <div className="flex items-center space-x-1 text-sm text-gray-400">
+                            <MessageCircle className="w-4 h-4" />
+                            <span>{post.commentsCount || 0}</span>
+                          </div>
+                        </div>
+                        
+                        <Link
+                          href={`/posts/${post.id}`}
+                          className="text-xs text-gray-400 hover:text-white transition-colors"
+                        >
+                          View Post
+                        </Link>
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 lg:py-12">
+                  <div className="w-16 h-16 lg:w-20 lg:h-20 bg-gray-800 mx-auto mb-4 flex items-center justify-center">
+                    <User className="w-8 h-8 lg:w-10 lg:h-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg lg:text-xl font-semibold text-white mb-2">No Posts Yet</h3>
+                  <p className="text-gray-400 text-sm lg:text-base">
+                    {isOwnProfile 
+                      ? "You haven't posted anything yet. Share your first post!"
+                      : `${profileUser.username} hasn't posted anything yet.`
+                    }
+                  </p>
                 </div>
               )}
             </div>
