@@ -42,36 +42,32 @@ export async function POST(request: NextRequest) {
   const stopTimer = PerformanceMonitor.startTimer('create_post_api');
   
   try {
-    // Get client IP for rate limiting
-    const clientIP = request.ip || request.headers.get('x-forwarded-for') || 'unknown';
-    
-    // Check rate limit
-    if (!postCreationRateLimiter.isAllowed(clientIP)) {
-      return NextResponse.json({ 
-        error: 'Too many posts created. Please wait before posting again.' 
-      }, { status: 429 });
-    }
-
     const body = await request.json();
 
-    // Validate input
-    const validator = Validator.create({
-      content: body.content,
-      author_id: body.authorId
-    }).rules(ValidationRules.post.create);
-
-    const validation = validator.validate();
-    if (!validation.isValid) {
+    // Simple validation instead of strict validation
+    if (!body.content || !body.authorId) {
       return NextResponse.json({ 
-        error: 'Validation failed', 
-        details: validation.errors 
+        error: 'Content and author ID are required' 
       }, { status: 400 });
     }
 
-    const { content, author_id } = validation.sanitizedData!;
+    if (body.content.trim().length === 0) {
+      return NextResponse.json({ 
+        error: 'Post content cannot be empty' 
+      }, { status: 400 });
+    }
 
-    // Verify author exists (use cached lookup)
-    const author = await CachedDatabase.getUserById(author_id);
+    if (body.content.length > 2000) {
+      return NextResponse.json({ 
+        error: 'Post content is too long (max 2000 characters)' 
+      }, { status: 400 });
+    }
+
+    const content = body.content.trim();
+    const author_id = body.authorId;
+
+    // Verify author exists
+    const author = await Database.getUserById(author_id);
     if (!author) {
       return NextResponse.json({ error: 'Author not found' }, { status: 404 });
     }
@@ -81,11 +77,17 @@ export async function POST(request: NextRequest) {
     // Invalidate post cache since we added a new post
     CachedDatabase.invalidatePostCache();
     
-    return NextResponse.json({ post });
+    return NextResponse.json({ 
+      success: true,
+      post 
+    });
 
   } catch (error) {
     console.error('Create post error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   } finally {
     stopTimer();
   }
