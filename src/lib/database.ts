@@ -3,6 +3,47 @@ import { neon } from '@neondatabase/serverless'
 // Initialize Neon database connection
 const sql = neon(process.env.DATABASE_URL!)
 
+// Enhanced error logging utility
+const logDatabaseError = (operation: string, error: any, context?: any) => {
+  console.error(`🔴 Database Error [${operation}]:`, {
+    error: error.message || error,
+    context,
+    timestamp: new Date().toISOString(),
+    stack: error.stack?.substring(0, 500)
+  })
+}
+
+// Database operation wrapper with error handling and retries
+const withErrorHandling = async <T>(
+  operation: string,
+  fn: () => Promise<T>,
+  context?: any,
+  retries: number = 2
+): Promise<T> => {
+  let lastError: any
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const startTime = Date.now()
+      const result = await fn()
+      const duration = Date.now() - startTime
+      
+      console.log(`✅ Database Success [${operation}] (${duration}ms)`, context ? { context } : '')
+      return result
+    } catch (error) {
+      lastError = error
+      
+      if (attempt < retries) {
+        console.warn(`⚠️ Database Retry [${operation}] Attempt ${attempt + 1}/${retries + 1}`)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 100))
+      }
+    }
+  }
+  
+  logDatabaseError(operation, lastError, context)
+  throw new Error(`Database operation failed after ${retries + 1} attempts: ${operation}`)
+}
+
 export interface User {
   id: string;
   username: string;
@@ -67,27 +108,35 @@ export interface Announcement {
 export class Database {
   // User operations
   static async createUser(userData: Omit<User, 'id' | 'created_at' | 'updated_at'>): Promise<User> {
-    const rows = await sql`
-      INSERT INTO users (username, email, password_hash, full_name, user_type, bio, location, website, social_github, social_linkedin, social_twitter, social_instagram)
-      VALUES (${userData.username}, ${userData.email}, ${userData.password_hash}, ${userData.full_name}, ${userData.user_type}, ${userData.bio || null}, ${userData.location || null}, ${userData.website || null}, ${userData.social_github || null}, ${userData.social_linkedin || null}, ${userData.social_twitter || null}, ${userData.social_instagram || null})
-      RETURNING *
-    `
-    return rows[0] as User
+    return withErrorHandling('createUser', async () => {
+      const rows = await sql`
+        INSERT INTO users (username, email, password_hash, full_name, user_type, bio, location, website, social_github, social_linkedin, social_twitter, social_instagram)
+        VALUES (${userData.username}, ${userData.email}, ${userData.password_hash}, ${userData.full_name}, ${userData.user_type}, ${userData.bio || null}, ${userData.location || null}, ${userData.website || null}, ${userData.social_github || null}, ${userData.social_linkedin || null}, ${userData.social_twitter || null}, ${userData.social_instagram || null})
+        RETURNING *
+      `
+      return rows[0] as User
+    }, { username: userData.username, email: userData.email })
   }
 
   static async getUserByEmail(email: string): Promise<User | null> {
-    const rows = await sql`SELECT * FROM users WHERE email = ${email}`
-    return rows[0] as User || null
+    return withErrorHandling('getUserByEmail', async () => {
+      const rows = await sql`SELECT * FROM users WHERE email = ${email}`
+      return rows[0] as User || null
+    }, { email })
   }
 
   static async getUserByUsername(username: string): Promise<User | null> {
-    const rows = await sql`SELECT * FROM users WHERE username = ${username}`
-    return rows[0] as User || null
+    return withErrorHandling('getUserByUsername', async () => {
+      const rows = await sql`SELECT * FROM users WHERE username = ${username}`
+      return rows[0] as User || null
+    }, { username })
   }
 
   static async getUserById(id: string): Promise<User | null> {
-    const rows = await sql`SELECT * FROM users WHERE id = ${id}`
-    return rows[0] as User || null
+    return withErrorHandling('getUserById', async () => {
+      const rows = await sql`SELECT * FROM users WHERE id = ${id}`
+      return rows[0] as User || null
+    }, { id })
   }
 
   static async getAllUsers(): Promise<User[]> {
@@ -134,38 +183,42 @@ export class Database {
 
   // Post operations
   static async createPost(postData: Omit<Post, 'id' | 'likes_count' | 'comments_count' | 'created_at' | 'updated_at'>): Promise<Post> {
-    const rows = await sql`
-      INSERT INTO posts (content, author_id)
-      VALUES (${postData.content}, ${postData.author_id})
-      RETURNING *
-    `
-    return rows[0] as Post
+    return withErrorHandling('createPost', async () => {
+      const rows = await sql`
+        INSERT INTO posts (content, author_id)
+        VALUES (${postData.content}, ${postData.author_id})
+        RETURNING *
+      `
+      return rows[0] as Post
+    }, { author_id: postData.author_id, content_length: postData.content.length })
   }
 
   static async getAllPosts(limit: number = 50, offset: number = 0): Promise<Post[]> {
-    const rows = await sql`
-      SELECT p.*, u.username, u.full_name, u.user_type
-      FROM posts p
-      JOIN users u ON p.author_id = u.id
-      ORDER BY p.created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `
-    
-    return rows.map((row: any) => ({
-      id: row.id,
-      content: row.content,
-      author_id: row.author_id,
-      likes_count: row.likes_count,
-      comments_count: row.comments_count,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      author: {
-        id: row.author_id,
-        username: row.username,
-        full_name: row.full_name,
-        user_type: row.user_type
-      } as User
-    }))
+    return withErrorHandling('getAllPosts', async () => {
+      const rows = await sql`
+        SELECT p.*, u.username, u.full_name, u.user_type
+        FROM posts p
+        JOIN users u ON p.author_id = u.id
+        ORDER BY p.created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `
+      
+      return rows.map((row: any) => ({
+        id: row.id,
+        content: row.content,
+        author_id: row.author_id,
+        likes_count: row.likes_count,
+        comments_count: row.comments_count,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        author: {
+          id: row.author_id,
+          username: row.username,
+          full_name: row.full_name,
+          user_type: row.user_type
+        } as User
+      }))
+    }, { limit, offset })
   }
 
   static async getPostById(id: string): Promise<Post | null> {
@@ -197,8 +250,10 @@ export class Database {
   }
 
   static async deletePost(id: string): Promise<boolean> {
-    const result = await sql`DELETE FROM posts WHERE id = ${id}`
-    return result.length > 0
+    return withErrorHandling('deletePost', async () => {
+      const result = await sql`DELETE FROM posts WHERE id = ${id}`;
+      return result.length > 0;
+    }, { post_id: id });
   }
 
   // Comment operations
@@ -313,40 +368,46 @@ export class Database {
 
   // Announcement operations
   static async createAnnouncement(announcementData: Omit<Announcement, 'id' | 'created_at'>): Promise<Announcement> {
-    const rows = await sql`
-      INSERT INTO announcements (title, content, announcement_type, created_by)
-      VALUES (${announcementData.title}, ${announcementData.content}, ${announcementData.announcement_type}, ${announcementData.created_by})
-      RETURNING *
-    `
-    return rows[0] as Announcement
+    return withErrorHandling('createAnnouncement', async () => {
+      const rows = await sql`
+        INSERT INTO announcements (title, content, announcement_type, created_by)
+        VALUES (${announcementData.title}, ${announcementData.content}, ${announcementData.announcement_type}, ${announcementData.created_by})
+        RETURNING *
+      `;
+      return rows[0] as Announcement;
+    }, { created_by: announcementData.created_by, type: announcementData.announcement_type });
   }
 
   static async getAllAnnouncements(): Promise<Announcement[]> {
-    const rows = await sql`
-      SELECT a.*, u.username, u.full_name
-      FROM announcements a
-      JOIN users u ON a.created_by = u.id
-      ORDER BY a.created_at DESC
-    `
-    
-    return rows.map((row: any) => ({
-      id: row.id,
-      title: row.title,
-      content: row.content,
-      announcement_type: row.announcement_type,
-      created_by: row.created_by,
-      created_at: row.created_at,
-      author: {
-        id: row.created_by,
-        username: row.username,
-        full_name: row.full_name
-      } as User
-    }))
+    return withErrorHandling('getAllAnnouncements', async () => {
+      const rows = await sql`
+        SELECT a.*, u.username, u.full_name
+        FROM announcements a
+        JOIN users u ON a.created_by = u.id
+        ORDER BY a.created_at DESC
+      `;
+      
+      return rows.map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        announcement_type: row.announcement_type,
+        created_by: row.created_by,
+        created_at: row.created_at,
+        author: {
+          id: row.created_by,
+          username: row.username,
+          full_name: row.full_name
+        } as User
+      }));
+    });
   }
 
   static async deleteAnnouncement(id: string): Promise<boolean> {
-    const result = await sql`DELETE FROM announcements WHERE id = ${id}`
-    return result.length > 0
+    return withErrorHandling('deleteAnnouncement', async () => {
+      const result = await sql`DELETE FROM announcements WHERE id = ${id}`;
+      return result.length > 0;
+    }, { announcement_id: id });
   }
 
   static async dismissAnnouncement(userId: string, announcementId: string): Promise<boolean> {
