@@ -24,24 +24,17 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Validate input
-    const validator = Validator.create(body).rules([
-      ...ValidationRules.auth.login,
-      { field: 'rememberMe', type: 'boolean' as const }
-    ]);
-
-    const validation = validator.validate();
-    if (!validation.isValid) {
+    // Simple validation for login (don't use the strict email validation)
+    if (!body.username || !body.password) {
       return NextResponse.json({ 
-        error: 'Validation failed', 
-        details: validation.errors 
+        error: 'Username and password are required' 
       }, { status: 400 });
     }
 
-    const { username, password, rememberMe = false } = validation.sanitizedData!;
+    const { username, password, rememberMe = false } = body;
 
-    // Check if user exists (use email field for username since our validation expects email)
-    const user = await Database.getUserByEmail(username) || await Database.getUserByUsername(username);
+    // Check if user exists (try both username and email)
+    const user = await Database.getUserByUsername(username) || await Database.getUserByEmail(username);
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
