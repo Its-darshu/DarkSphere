@@ -228,36 +228,36 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white text-black flex items-center justify-center">
+    <div className="min-h-screen bg-black text-white flex items-center justify-center">
       <div className="w-full max-w-md">
-        <div className="bg-white border border-black p-8">
+        <div className="bg-black border border-white p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">DARKSPHERE</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-3xl font-bold mb-2 text-white">DARKSPHERE</h1>
+            <p className="text-sm text-gray-300">
               {mode === 'login' ? 'Welcome back' : 'Join the community'}
             </p>
           </div>
 
           {/* Mode Toggle */}
-          <div className="flex mb-6 border border-black">
+          <div className="flex mb-6 border border-white">
             <button
               type="button"
               onClick={() => setMode('login')}
               className={`flex-1 py-2 px-4 text-sm font-medium transition-colors
                 ${mode === 'login' 
-                  ? 'bg-black text-white' 
-                  : 'bg-white text-black hover:bg-gray-100'}`}
+                  ? 'bg-white text-black' 
+                  : 'bg-black text-white hover:bg-gray-900'}`}
             >
               LOGIN
             </button>
             <button
               type="button"
               onClick={() => setMode('register')}
-              className={`flex-1 py-2 px-4 text-sm font-medium transition-colors border-l border-black
+              className={`flex-1 py-2 px-4 text-sm font-medium transition-colors border-l border-white
                 ${mode === 'register' 
-                  ? 'bg-black text-white' 
-                  : 'bg-white text-black hover:bg-gray-100'}`}
+                  ? 'bg-white text-black' 
+                  : 'bg-black text-white hover:bg-gray-900'}`}
             >
               REGISTER
             </button>
@@ -269,11 +269,11 @@ export default function HomePage() {
             {mode === 'register' && (
               <div className="space-y-4">
                 <div className="text-center py-2">
-                  <div className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-50 border border-gray-200 text-sm">
-                    <Key className="w-4 h-4 text-gray-600" />
-                    <span className="font-medium text-gray-700">Security Key Required</span>
+                  <div className="inline-flex items-center space-x-2 px-4 py-2 bg-black border border-white text-sm">
+                    <Key className="w-4 h-4 text-white" />
+                    <span className="font-medium text-white">Security Key Required</span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">Enter your security key to proceed with registration</p>
+                  <p className="text-xs text-gray-400 mt-2">Enter your security key to proceed with registration</p>
                 </div>
                 
                 <div className="relative">
@@ -284,15 +284,15 @@ export default function HomePage() {
                     value={formData.securityKey}
                     onChange={handleChange}
                     required
-                    className={`w-full px-4 py-3 pr-12 border bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-inset transition-all duration-300 ${
-                      keyValidation.valid === true ? 'border-green-500 focus:ring-green-500 bg-green-50' :
-                      keyValidation.valid === false ? 'border-red-500 focus:ring-red-500 bg-red-50' :
-                      'border-gray-300 focus:ring-black focus:border-black'
+                    className={`w-full px-4 py-3 pr-12 border bg-black text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-inset transition-all duration-300 ${
+                      keyValidation.valid === true ? 'border-green-500 focus:ring-green-500 bg-green-900' :
+                      keyValidation.valid === false ? 'border-red-500 focus:ring-red-500 bg-red-900' :
+                      'border-white focus:ring-white focus:border-white'
                     }`}
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                     {keyValidation.checking ? (
-                      <div className="animate-spin w-4 h-4 border-2 border-gray-300 border-t-black rounded-full"></div>
+                      <div className="animate-spin w-4 h-4 border-2 border-gray-400 border-t-white rounded-full"></div>
                     ) : keyValidation.valid === true ? (
                       <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
                         <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,8 +313,8 @@ export default function HomePage() {
                 
                 {keyValidation.checking && (
                   <div className="text-center">
-                    <p className="text-sm text-gray-600 inline-flex items-center space-x-2">
-                      <div className="animate-spin w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full"></div>
+                    <p className="text-sm text-gray-400 inline-flex items-center space-x-2">
+                      <div className="animate-spin w-3 h-3 border-2 border-gray-400 border-t-gray-300 rounded-full"></div>
                       <span>Validating security key...</span>
                     </p>
                   </div>
@@ -323,8 +323,8 @@ export default function HomePage() {
                 {keyValidation.message && (
                   <div className={`text-center p-3 border ${
                     keyValidation.valid ? 
-                    'bg-green-50 border-green-200 text-green-700' : 
-                    'bg-red-50 border-red-200 text-red-700'
+                    'bg-green-900 border-green-700 text-green-300' : 
+                    'bg-red-900 border-red-700 text-red-300'
                   }`}>
                     <p className="text-sm font-medium inline-flex items-center space-x-2">
                       {keyValidation.valid ? (
@@ -344,7 +344,7 @@ export default function HomePage() {
                 {/* Progress indicator */}
                 {keyValidation.valid === true && (
                   <div className="text-center">
-                    <div className="inline-flex items-center space-x-2 px-3 py-1 bg-green-100 border border-green-300 text-green-700 text-sm">
+                    <div className="inline-flex items-center space-x-2 px-3 py-1 bg-green-900 border border-green-700 text-green-300 text-sm">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
@@ -361,7 +361,7 @@ export default function HomePage() {
                 {/* Profile Section Header for Registration */}
                 {mode === 'register' && keyValidation.valid === true && (
                   <div className="text-center py-3">
-                    <div className="inline-flex items-center space-x-2 px-4 py-2 bg-black text-white text-sm">
+                    <div className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-black text-sm">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
@@ -373,22 +373,22 @@ export default function HomePage() {
                 <div className="space-y-4">
                   {/* Username */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <label className="block text-sm font-medium text-white mb-1">Username</label>
                     <input
                       type="text"
                       name="username"
-                      placeholder="Choose a unique username"
+                      placeholder="Enter the username"
                       value={formData.username}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200"
+                      className="w-full px-4 py-3 border border-white bg-black text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all duration-200"
                     />
                   </div>
 
                   {/* Email (Register only) */}
                   {mode === 'register' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                      <label className="block text-sm font-medium text-white mb-1">Email Address</label>
                       <input
                         type="email"
                         name="email"
@@ -396,7 +396,7 @@ export default function HomePage() {
                         value={formData.email}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200"
+                        className="w-full px-4 py-3 border border-white bg-black text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all duration-200"
                       />
                     </div>
                   )}
@@ -404,7 +404,7 @@ export default function HomePage() {
                   {/* Full Name (Register only) */}
                   {mode === 'register' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                      <label className="block text-sm font-medium text-white mb-1">Full Name</label>
                       <input
                         type="text"
                         name="fullName"
@@ -412,33 +412,33 @@ export default function HomePage() {
                         value={formData.fullName}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200"
+                        className="w-full px-4 py-3 border border-white bg-black text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all duration-200"
                       />
                     </div>
                   )}
 
                   {/* Password */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <label className="block text-sm font-medium text-white mb-1">Password</label>
                     <div className="relative">
                       <input
                         type={showPassword ? 'text' : 'password'}
                         name="password"
-                        placeholder="Create a secure password"
+                        placeholder="Enter the password"
                         value={formData.password}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200"
+                        className="w-full px-4 py-3 pr-12 border border-white bg-black text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all duration-200"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded transition-colors"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-900 rounded transition-colors"
                       >
                         {showPassword ? (
-                          <EyeOff className="w-4 h-4 text-gray-600" />
+                          <EyeOff className="w-4 h-4 text-gray-400" />
                         ) : (
-                          <Eye className="w-4 h-4 text-gray-600" />
+                          <Eye className="w-4 h-4 text-gray-400" />
                         )}
                       </button>
                     </div>
@@ -447,7 +447,7 @@ export default function HomePage() {
                   {/* Confirm Password (Register only) */}
                   {mode === 'register' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                      <label className="block text-sm font-medium text-white mb-1">Confirm Password</label>
                       <div className="relative">
                         <input
                           type={showConfirmPassword ? 'text' : 'password'}
@@ -456,17 +456,17 @@ export default function HomePage() {
                           value={formData.confirmPassword}
                           onChange={handleChange}
                           required
-                          className="w-full px-4 py-3 pr-12 border border-gray-300 bg-white text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200"
+                          className="w-full px-4 py-3 pr-12 border border-white bg-black text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white focus:border-white transition-all duration-200"
                         />
                         <button
                           type="button"
                           onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded transition-colors"
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-900 rounded transition-colors"
                         >
                           {showConfirmPassword ? (
-                            <EyeOff className="w-4 h-4 text-gray-600" />
+                            <EyeOff className="w-4 h-4 text-gray-400" />
                           ) : (
-                            <Eye className="w-4 h-4 text-gray-600" />
+                            <Eye className="w-4 h-4 text-gray-400" />
                           )}
                         </button>
                       </div>
@@ -476,25 +476,9 @@ export default function HomePage() {
               </>
             )}
 
-            {/* Remember Me Checkbox (Login only) */}
-            {mode === 'login' && (
-              <div className="flex items-center">
-                <input
-                  id="rememberMe"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-black focus:ring-black border-gray-300 rounded"
-                />
-                <label htmlFor="rememberMe" className="ml-2 text-sm text-gray-600">
-                  Keep me logged in for 30 days
-                </label>
-              </div>
-            )}
-
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 text-sm">
+              <div className="bg-red-900 border border-red-700 text-red-300 px-4 py-3 text-sm">
                 {error}
               </div>
             )}
@@ -504,11 +488,11 @@ export default function HomePage() {
               <button
                 type="submit"
                 disabled={loading || (mode === 'register' && !keyValidation.valid)}
-                className="w-full bg-black text-white py-3 px-4 font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center space-x-2"
+                className="w-full bg-white text-black py-3 px-4 font-medium hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center space-x-2"
               >
                 {loading ? (
                   <>
-                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    <div className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full"></div>
                     <span>PROCESSING...</span>
                   </>
                 ) : (
@@ -535,14 +519,14 @@ export default function HomePage() {
 
             {/* Security Key Required Message for Registration */}
             {mode === 'register' && keyValidation.valid !== true && (
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 p-6 text-center">
+              <div className="bg-black border-2 border-dashed border-white p-6 text-center">
                 <div className="flex flex-col items-center space-y-3">
-                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                    <Key className="w-6 h-6 text-gray-500" />
+                  <div className="w-12 h-12 bg-black border border-white rounded-full flex items-center justify-center">
+                    <Key className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">Security Key Required</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">
+                    <h3 className="text-lg font-semibold text-white mb-2">Security Key Required</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed">
                       Enter a valid security key above to unlock the registration form and create your profile.
                     </p>
                   </div>
@@ -550,39 +534,6 @@ export default function HomePage() {
               </div>
             )}
           </form>
-
-          {/* Info */}
-          <div className="mt-8 text-center space-y-4">
-            <div className="border-t border-gray-200 pt-6">
-              <div className="space-y-3">
-                {mode === 'register' ? (
-                  <div className="bg-gray-50 border border-gray-200 p-4 text-center">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center justify-center space-x-2">
-                      <Key className="w-4 h-4" />
-                      <span>Need a Security Key?</span>
-                    </h3>
-                    <div className="space-y-2 text-xs text-gray-600">
-                      <p>Security keys are required for registration to maintain community quality.</p>
-                      <p>
-                        <a href="#" className="text-black hover:underline font-medium">Contact an admin</a> to request a security key.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-gray-700">Welcome back to DarkSphere!</h3>
-                    <p className="text-xs text-gray-600">Login with your credentials to access your account.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Platform Info */}
-            <div className="text-xs text-gray-500 space-y-1">
-              <p className="font-medium">© 2025 DarkSphere Community</p>
-              <p>Secure • Private • Minimal</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>
