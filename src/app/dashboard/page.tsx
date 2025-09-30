@@ -121,20 +121,45 @@ export default function Dashboard() {
       
       if (response.ok && data.posts) {
         // Map the database posts to our Post interface
-        const formattedPosts = data.posts.map((post: any) => ({
-          id: post.id,
-          content: post.content,
-          author: post.author?.full_name || post.author?.username || 'Unknown User',
-          authorId: post.author_id,
-          timestamp: new Date(post.created_at),
-          likes: post.likes_count || 0,
-          comments: post.comments_count || 0,
-          likedBy: [],
-          replies: []
+        const formattedPosts = await Promise.all(data.posts.map(async (post: any) => {
+          // Find existing post to preserve like state, or load from API
+          const existingPost = posts.find(p => p.id === post.id)
+          let likedBy: string[] = []
+          let likes = post.likes_count || 0
+          
+          // If we don't have existing like data and user is logged in, fetch from API
+          if (!existingPost && user) {
+            try {
+              const likeResponse = await fetch(`/api/likes?postId=${post.id}&userId=${user.id}`)
+              if (likeResponse.ok) {
+                const likeData = await likeResponse.json()
+                likes = likeData.likesCount
+                likedBy = likeData.isLiked ? [user.id] : []
+              }
+            } catch (error) {
+              console.warn('Failed to load like status for post', post.id)
+            }
+          } else if (existingPost) {
+            // Preserve existing like state
+            likes = existingPost.likes
+            likedBy = existingPost.likedBy
+          }
+          
+          return {
+            id: post.id,
+            content: post.content,
+            author: post.author?.full_name || post.author?.username || 'Unknown User',
+            authorId: post.author_id,
+            timestamp: new Date(post.created_at),
+            likes: likes,
+            comments: post.comments_count || 0,
+            likedBy: likedBy,
+            replies: existingPost ? existingPost.replies : []
+          }
         }))
         
         setPosts(formattedPosts)
-        console.log(`✅ Loaded ${formattedPosts.length} community posts`)
+        console.log(`✅ Loaded ${formattedPosts.length} community posts (with like states)`)
       } else {
         console.error('Failed to load posts:', data.error)
       }
@@ -264,28 +289,69 @@ export default function Dashboard() {
     }
   }
 
-  const handleLike = (postId: string) => {
+  const handleLike = async (postId: string) => {
     if (!user) return
     
-    const updatedPosts = posts.map(post => {
-      if (post.id === postId) {
-        const hasLiked = post.likedBy.includes(user.id)
-        return {
-          ...post,
-          likes: hasLiked ? post.likes - 1 : post.likes + 1,
-          likedBy: hasLiked 
-            ? post.likedBy.filter(id => id !== user.id)
-            : [...post.likedBy, user.id]
+    try {
+      // Optimistically update the UI first
+      const updatedPosts = posts.map(post => {
+        if (post.id === postId) {
+          const hasLiked = post.likedBy.includes(user.id)
+          return {
+            ...post,
+            likes: hasLiked ? post.likes - 1 : post.likes + 1,
+            likedBy: hasLiked 
+              ? post.likedBy.filter(id => id !== user.id)
+              : [...post.likedBy, user.id]
+          }
         }
+        return post
+      })
+      
+      setPosts(updatedPosts)
+      
+      // Send the like/unlike to the API
+      const response = await fetch('/api/likes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          postId: postId,
+          userId: user.id
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log(`✅ ${data.isLiked ? 'Liked' : 'Unliked'} post ${postId}`)
+        
+        // Update with the actual server response
+        const serverUpdatedPosts = posts.map(post => {
+          if (post.id === postId) {
+            return {
+              ...post,
+              likes: data.likesCount,
+              likedBy: data.isLiked 
+                ? [...post.likedBy.filter(id => id !== user.id), user.id]
+                : post.likedBy.filter(id => id !== user.id)
+            }
+          }
+          return post
+        })
+        
+        setPosts(serverUpdatedPosts)
+      } else {
+        console.error('Failed to like/unlike post')
+        // Revert the optimistic update if the API call failed
+        setPosts(posts)
       }
-      return post
-    })
-    
-    // Sort by likes (higher likes first)
-    updatedPosts.sort((a, b) => b.likes - a.likes)
-    
-    setPosts(updatedPosts)
-    localStorage.setItem('posts', JSON.stringify(updatedPosts))
+      
+    } catch (error) {
+      console.error('Error handling like:', error)
+      // Revert the optimistic update if there was an error
+      setPosts(posts)
+    }
   }
 
   const handleDelete = async (postId: string) => {
