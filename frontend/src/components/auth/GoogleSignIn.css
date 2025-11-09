@@ -1,0 +1,14 @@
+.google-signin {
+  width: 100%;
+}
+
+.btn-google {
+  width: 100%;
+  justify-content: center;
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+.btn-google svg {
+  margin-right: 12px;
+}

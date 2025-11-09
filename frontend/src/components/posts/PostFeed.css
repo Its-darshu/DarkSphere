@@ -1,0 +1,37 @@
+.joke-feed {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.feed-filters {
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.category-filter {
+  max-width: 200px;
+}
+
+.jokes-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--gray);
+}
+
+.load-more-container {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .jokes-grid {
+    gap: 1rem;
+  }
+}

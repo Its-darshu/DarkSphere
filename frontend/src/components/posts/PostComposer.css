@@ -1,0 +1,78 @@
+.composer-modal {
+  max-width: 600px;
+}
+
+.image-upload {
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  transition: border-color 0.2s ease;
+}
+
+.image-upload:hover {
+  border-color: var(--primary);
+}
+
+.image-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--gray);
+}
+
+.image-upload-label svg {
+  color: var(--primary);
+}
+
+.image-upload-label span {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.image-upload-label small {
+  font-size: 0.875rem;
+}
+
+.image-preview-container {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.image-preview {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.image-remove-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: white;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.image-remove-button:hover {
+  background: #c62828;
+}
+
+@media (max-width: 768px) {
+  .composer-modal {
+    max-height: 85vh;
+  }
+}

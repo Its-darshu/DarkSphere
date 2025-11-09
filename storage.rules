@@ -1,0 +1,52 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check file size (max 5MB)
+    function isValidSize() {
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+    
+    // Helper function to check if file is an image
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    // Post images
+    match /posts/{imageId} {
+      // Anyone can read post images
+      allow read: if true;
+      
+      // Authenticated users can upload images
+      allow write: if isAuthenticated() && isImage() && isValidSize();
+    }
+    
+    // Post thumbnails
+    match /posts/thumbnails/{thumbId} {
+      // Anyone can read thumbnails
+      allow read: if true;
+      
+      // Authenticated users can upload thumbnails
+      allow write: if isAuthenticated() && isImage() && isValidSize();
+    }
+    
+    // User avatars
+    match /avatars/{avatarId} {
+      // Anyone can read avatars
+      allow read: if true;
+      
+      // Authenticated users can upload their own avatars
+      allow write: if isAuthenticated() && isImage() && isValidSize();
+    }
+    
+    // Deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

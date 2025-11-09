@@ -1,0 +1,8 @@
+.passcode-modal {
+  text-align: center;
+}
+
+.passcode-modal p {
+  margin-bottom: 1.5rem;
+  color: var(--gray);
+}

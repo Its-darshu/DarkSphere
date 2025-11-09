@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles
+      allow read: if isAuthenticated();
+      
+      // Users can only update their own profile (except role and disabled fields)
+      allow update: if isOwner(userId) && 
+                      !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'disabled']);
+      
+      // Only system can create users (via backend)
+      allow create: if false;
+      
+      // Admins can update any user
+      allow write: if isAdmin();
+    }
+    
+    // Posts collection
+    match /posts/{postId} {
+      // Anyone authenticated can read approved posts
+      allow read: if isAuthenticated();
+      
+      // Authenticated users can create posts
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.approved == true &&
+                      request.resource.data.featured == false;
+      
+      // Users can delete their own posts, admins can delete any
+      allow delete: if isOwner(resource.data.userId) || isAdmin();
+      
+      // Only admins can update posts
+      allow update: if isAdmin();
+    }
+    
+    // Flags collection
+    match /flags/{flagId} {
+      // Users can read flags they created, admins can read all
+      allow read: if isAdmin() || 
+                    (isAuthenticated() && resource.data.reportedBy == request.auth.uid);
+      
+      // Authenticated users can create flags
+      allow create: if isAuthenticated() && 
+                      request.resource.data.reportedBy == request.auth.uid &&
+                      request.resource.data.status == 'open';
+      
+      // Only admins can update flags
+      allow update: if isAdmin();
+      
+      // No one can delete flags
+      allow delete: if false;
+    }
+    
+    // Audit logs collection
+    match /audit_logs/{logId} {
+      // Only admins can read audit logs
+      allow read: if isAdmin();
+      
+      // Only system can create audit logs (via backend)
+      allow create: if false;
+      
+      // No one can modify or delete audit logs
+      allow update, delete: if false;
+    }
+    
+    // Passcodes collection (if used)
+    match /passcodes/{passcodeId} {
+      // Only admins can read passcodes
+      allow read: if isAdmin();
+      
+      // Only admins can create/update passcodes
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "darksphere",
+  "version": "1.0.0",
+  "description": "A secured social platform with Firebase backend, featuring passcode-gated access and admin moderation",
+  "scripts": {
+    "setup": "pwsh ./setup.ps1",
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
+    "build": "cd frontend && npm run build",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage"
+  },
+  "keywords": [
+    "social",
+    "platform",
+    "firebase",
+    "react",
+    "express"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "darksphere-backend",
+  "version": "1.0.0",
+  "description": "Backend API for DarkSphere social platform",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "keywords": [
+    "social",
+    "api",
+    "firebase",
+    "express"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "firebase-admin": "^12.0.0",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.33.2",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "bad-words": "^3.0.4",
+    "bcrypt": "^5.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

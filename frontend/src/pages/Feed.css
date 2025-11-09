@@ -1,0 +1,28 @@
+.feed-page {
+  padding: 2rem 0;
+  min-height: calc(100vh - 70px);
+}
+
+.feed-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.feed-header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.feed-header p {
+  color: var(--gray);
+}
+
+@media (max-width: 768px) {
+  .feed-page {
+    padding: 1rem 0;
+  }
+
+  .feed-header h1 {
+    font-size: 1.5rem;
+  }
+}
