@@ -2,33 +2,19 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const { createThumbnail, optimizeImage } = require('../utils/imageProcessing');
-const path = require('path');
+const cloudinary = require('cloudinary').v2;
 const fs = require('fs').promises;
 
-// Create public directories if they don't exist
-const initializeDirectories = async () => {
-  const dirs = [
-    path.join(__dirname, '../../public'),
-    path.join(__dirname, '../../public/posts'),
-    path.join(__dirname, '../../public/posts/thumbnails'),
-    path.join(__dirname, '../../public/avatars')
-  ];
-  
-  for (const dir of dirs) {
-    try {
-      await fs.mkdir(dir, { recursive: true });
-    } catch (err) {
-      console.error(`Error creating directory ${dir}:`, err);
-    }
-  }
-};
-
-initializeDirectories();
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 /**
  * POST /api/upload/image
- * Upload image for posts (LOCAL STORAGE)
+ * Upload image for posts (CLOUDINARY)
  */
 router.post('/image', verifyToken, upload.single('image'), async (req, res) => {
   try {
@@ -37,33 +23,32 @@ router.post('/image', verifyToken, upload.single('image'), async (req, res) => {
     }
 
     const file = req.file;
-    const fileName = `${Date.now()}-${path.basename(file.filename)}`;
-    const publicDir = path.join(__dirname, '../../public');
-    
-    // Destination paths
-    const destPath = path.join(publicDir, 'posts', fileName);
-    const thumbnailName = `thumb-${fileName}`;
-    const thumbnailDestPath = path.join(publicDir, 'posts/thumbnails', thumbnailName);
 
-    // Optimize image
-    await optimizeImage(file.path);
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder: 'darksphere/posts',
+      transformation: [
+        { width: 1200, height: 1200, crop: 'limit' },
+        { quality: 'auto:good' },
+        { fetch_format: 'auto' }
+      ]
+    });
 
-    // Create thumbnail
-    const thumbnailPath = await createThumbnail(file.path);
+    // Create thumbnail transformation URL
+    const thumbnailUrl = cloudinary.url(result.public_id, {
+      transformation: [
+        { width: 400, height: 400, crop: 'fill' },
+        { quality: 'auto:low' }
+      ]
+    });
 
-    // Move files to public directory
-    await fs.rename(file.path, destPath);
-    await fs.rename(thumbnailPath, thumbnailDestPath);
-
-    // Generate URLs (relative to backend server)
-    const baseUrl = process.env.API_URL || 'http://localhost:5000';
-    const imageUrl = `${baseUrl}/uploads/posts/${fileName}`;
-    const thumbnailUrl = `${baseUrl}/uploads/posts/thumbnails/${thumbnailName}`;
+    // Clean up temporary file
+    await fs.unlink(file.path);
 
     res.json({
-      imageUrl,
-      thumbnailUrl,
-      fileName
+      imageUrl: result.secure_url,
+      thumbnailUrl: thumbnailUrl,
+      publicId: result.public_id
     });
   } catch (error) {
     console.error('Image upload error:', error);
@@ -83,7 +68,7 @@ router.post('/image', verifyToken, upload.single('image'), async (req, res) => {
 
 /**
  * POST /api/upload/avatar
- * Upload user avatar (LOCAL STORAGE)
+ * Upload user avatar (CLOUDINARY)
  */
 router.post('/avatar', verifyToken, upload.single('avatar'), async (req, res) => {
   try {
@@ -92,23 +77,25 @@ router.post('/avatar', verifyToken, upload.single('avatar'), async (req, res) =>
     }
 
     const file = req.file;
-    const fileName = `${req.user.uid}-${Date.now()}${path.extname(file.filename)}`;
-    const publicDir = path.join(__dirname, '../../public');
-    const destPath = path.join(publicDir, 'avatars', fileName);
 
-    // Optimize image
-    await optimizeImage(file.path, 400);
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(file.path, {
+      folder: 'darksphere/avatars',
+      public_id: req.user.uid,
+      overwrite: true,
+      transformation: [
+        { width: 400, height: 400, crop: 'fill', gravity: 'face' },
+        { quality: 'auto:good' },
+        { fetch_format: 'auto' }
+      ]
+    });
 
-    // Move file to public directory
-    await fs.rename(file.path, destPath);
-
-    // Generate URL
-    const baseUrl = process.env.API_URL || 'http://localhost:5000';
-    const avatarUrl = `${baseUrl}/uploads/avatars/${fileName}`;
+    // Clean up temporary file
+    await fs.unlink(file.path);
 
     res.json({
-      avatarUrl,
-      fileName
+      avatarUrl: result.secure_url,
+      publicId: result.public_id
     });
   } catch (error) {
     console.error('Avatar upload error:', error);
