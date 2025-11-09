@@ -7,3 +7,4 @@ dist-ssr
 .env.production.local
 .env.development.local
 .DS_Store
+.vercel
