@@ -385,3 +385,5 @@ MIT
 ## Support
 
 For issues and questions, please create an issue in the repository.
+#   T r i g g e r   r e b u i l d  
+ 
