@@ -1,75 +1,147 @@
-import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import './PasscodeModal.css';
+import { useState } from 'react';import { useState } from 'react';
 
-const PasscodeModal = ({ isOpen, onClose, onSuccess }) => {
-  const { registerWithPasscode, verifyPasscode, currentUser } = useAuth();
-  const [passcode, setPasscode] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [step, setStep] = useState(1); // 1: passcode, 2: display name
+import { useAuth } from '../../contexts/AuthContext';import { useAuth } from '../../contexts/AuthContext';
+
+import './PasscodeModal.css';import './PasscodeModal.css';
+
+
+
+const PasscodeModal = ({ isOpen, onClose, onSuccess }) => {const PasscodeModal = ({ isOpen, onClose, onSuccess }) => {
+
+  const { registerWithPasscode, currentUser } = useAuth();  const { registerWithPasscode, verifyPasscode, currentUser } = useAuth();
+
+  const [displayName, setDisplayName] = useState(currentUser?.displayName || '');  const [passcode, setPasscode] = useState('');
+
+  const [loading, setLoading] = useState(false);  const [displayName, setDisplayName] = useState('');
+
+  const [error, setError] = useState('');  const [step, setStep] = useState(1); // 1: passcode, 2: display name
+
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  if (!isOpen) return null;
+  if (!isOpen) return null;  const [error, setError] = useState('');
 
-  const handleVerifyPasscode = async (e) => {
+
+
+  const handleRegister = async (e) => {  if (!isOpen) return null;
+
     e.preventDefault();
-    setError('');
-    setLoading(true);
 
-    try {
-      const valid = await verifyPasscode(passcode);
-      if (valid) {
-        setStep(2);
-        setDisplayName(currentUser?.displayName || '');
-      } else {
-        setError('Invalid passcode. Please try again.');
-      }
-    } catch (err) {
+    setError('');  const handleVerifyPasscode = async (e) => {
+
+    setLoading(true);    e.preventDefault();
+
+    setError('');
+
+    try {    setLoading(true);
+
+      // Auto-use passcode "admin123" - change REGISTRATION_PASSCODE in Vercel env vars to change this
+
+      await registerWithPasscode('admin123', displayName);    try {
+
+      if (onSuccess) onSuccess();      const valid = await verifyPasscode(passcode);
+
+      onClose();      if (valid) {
+
+    } catch (err) {        setStep(2);
+
+      setError(err.response?.data?.message || 'Registration failed. Please try again.');        setDisplayName(currentUser?.displayName || '');
+
+    } finally {      } else {
+
+      setLoading(false);        setError('Invalid passcode. Please try again.');
+
+    }      }
+
+  };    } catch (err) {
+
       setError('Failed to verify passcode. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
+  return (    } finally {
+
+    <div className="modal-overlay" onClick={onClose}>      setLoading(false);
+
+      <div className="modal" onClick={(e) => e.stopPropagation()}>    }
+
+        <div className="modal-header">  };
+
+          <h2 className="modal-title">Complete Registration</h2>
+
+          <button className="modal-close" onClick={onClose}>×</button>  const handleRegister = async (e) => {
+
+        </div>    e.preventDefault();
+
     setError('');
-    setLoading(true);
 
-    try {
-      await registerWithPasscode(passcode, displayName);
-      if (onSuccess) onSuccess();
-      onClose();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+        <div className="modal-body">    setLoading(true);
 
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+          <form onSubmit={handleRegister}>
+
+            <div className="form-group">    try {
+
+              <label className="form-label">Display Name</label>      await registerWithPasscode(passcode, displayName);
+
+              <input      if (onSuccess) onSuccess();
+
+                type="text"      onClose();
+
+                className="form-input"    } catch (err) {
+
+                placeholder="Enter your display name"      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+
+                value={displayName}    } finally {
+
+                onChange={(e) => setDisplayName(e.target.value)}      setLoading(false);
+
+                required    }
+
+                autoFocus  };
+
+              />
+
+              <small style={{ color: 'var(--gray)', marginTop: '0.5rem', display: 'block' }}>  return (
+
+                This is how others will see you on the platform    <div className="modal-overlay" onClick={onClose}>
+
+              </small>      <div className="modal" onClick={(e) => e.stopPropagation()}>
+
+            </div>        <div className="modal-header">
+
           <h2 className="modal-title">
-            {step === 1 ? 'Enter Passcode' : 'Complete Registration'}
-          </h2>
-          <button className="modal-close" onClick={onClose}>×</button>
-        </div>
 
-        <div className="modal-body">
-          {step === 1 ? (
-            <form onSubmit={handleVerifyPasscode}>
-              <div className="form-group">
-                <label className="form-label">Access Passcode</label>
-                <input
-                  type="password"
-                  className="form-input"
-                  placeholder="Enter the secret passcode"
-                  value={passcode}
+            {error && <div className="alert alert-error">{error}</div>}            {step === 1 ? 'Enter Passcode' : 'Complete Registration'}
+
+          </h2>
+
+            <button          <button className="modal-close" onClick={onClose}>×</button>
+
+              type="submit"        </div>
+
+              className="btn btn-primary w-full"
+
+              disabled={loading || !displayName}        <div className="modal-body">
+
+            >          {step === 1 ? (
+
+              {loading ? 'Creating Account...' : 'Complete Registration'}            <form onSubmit={handleVerifyPasscode}>
+
+            </button>              <div className="form-group">
+
+          </form>                <label className="form-label">Access Passcode</label>
+
+        </div>                <input
+
+      </div>                  type="password"
+
+    </div>                  className="form-input"
+
+  );                  placeholder="Enter the secret passcode"
+
+};                  value={passcode}
+
                   onChange={(e) => setPasscode(e.target.value)}
-                  required
+
+export default PasscodeModal;                  required
+
                   autoFocus
                 />
                 <small style={{ color: 'var(--gray)', marginTop: '0.5rem', display: 'block' }}>
