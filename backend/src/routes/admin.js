@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { admin, db } = require('../config/firebase');
+const admin = require('firebase-admin');
 const { verifyToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/admin');
+
+// Get Firestore instance
+const db = admin.firestore();
 
 // All admin routes require authentication and admin role
 router.use(verifyToken);

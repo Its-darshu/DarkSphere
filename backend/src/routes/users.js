@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { admin, db } = require('../config/firebase');
+const admin = require('firebase-admin');
 const { verifyToken } = require('../middleware/auth');
 const { validateProfile } = require('../utils/validation');
+
+// Get Firestore instance
+const db = admin.firestore();
 
 /**
  * GET /api/users/me

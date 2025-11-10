@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
-const { admin, db } = require('../config/firebase');
+const admin = require('firebase-admin');
+
+// Get Firestore instance
+const db = admin.firestore();
 
 /**
  * POST /api/auth/verify-passcode

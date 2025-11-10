@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { admin, db, storage } = require('../config/firebase');
+const admin = require('firebase-admin');
 const { verifyToken } = require('../middleware/auth');
 const { requireAdmin } = require('../middleware/admin');
 const { validatePost, sanitizeText } = require('../utils/validation');
 const { containsProfanity } = require('../utils/profanityFilter');
+
+// Get Firestore instance
+const db = admin.firestore();
 
 /**
  * GET /api/posts
