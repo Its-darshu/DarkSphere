@@ -19,15 +19,15 @@ app.use(helmet({ crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: fals
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
-// Routes
-app.use('/api/auth', require('../backend/src/routes/auth'));
-app.use('/api/users', require('../backend/src/routes/users'));
-app.use('/api/posts', require('../backend/src/routes/posts'));
-app.use('/api/upload', require('../backend/src/routes/upload'));
-app.use('/api/admin', require('../backend/src/routes/admin'));
+// Routes - no /api prefix needed since Vercel routes /api/* here
+app.use('/auth', require('../backend/src/routes/auth'));
+app.use('/users', require('../backend/src/routes/users'));
+app.use('/posts', require('../backend/src/routes/posts'));
+app.use('/upload', require('../backend/src/routes/upload'));
+app.use('/admin', require('../backend/src/routes/admin'));
 
 // Health
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // Errors
 app.use((err, req, res, next) => {
