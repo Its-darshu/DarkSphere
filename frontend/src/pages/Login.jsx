@@ -11,12 +11,16 @@ const Login = () => {
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
 
   useEffect(() => {
+    console.log('🎯 Login useEffect - Auth state:', { isAuthenticated, isRegistered, showPasscodeModal });
+    
     // If user is authenticated but not registered, show passcode modal
     if (isAuthenticated && !isRegistered) {
+      console.log('🔓 Showing passcode modal - user not registered');
       setShowPasscodeModal(true);
     }
     // If fully authenticated and registered, redirect to feed
     else if (isAuthenticated && isRegistered) {
+      console.log('✅ User fully authenticated - redirecting to feed');
       navigate('/feed');
     }
   }, [isAuthenticated, isRegistered, navigate]);

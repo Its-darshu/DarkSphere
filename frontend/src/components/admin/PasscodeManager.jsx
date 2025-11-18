@@ -18,7 +18,7 @@ const PasscodeManager = () => {
   const fetchPasscodes = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/passcodes');
+      const response = await api.get('/api/admin/passcodes');
       setPasscodes(response.data.passcodes);
     } catch (err) {
       console.error('Error fetching passcodes:', err);
@@ -33,7 +33,7 @@ const PasscodeManager = () => {
 
     try {
       setCreating(true);
-      await api.post('/api/passcodes', {
+      await api.post('/api/admin/passcodes', {
         type,
         customPasscode: customPasscode.trim() || null
       });
@@ -54,7 +54,7 @@ const PasscodeManager = () => {
     if (!window.confirm('Are you sure you want to deactivate this passcode?')) return;
 
     try {
-      await api.delete(`/api/passcodes/${id}`);
+      await api.delete(`/api/admin/passcodes/${id}`);
       fetchPasscodes();
     } catch (err) {
       console.error('Error deactivating passcode:', err);

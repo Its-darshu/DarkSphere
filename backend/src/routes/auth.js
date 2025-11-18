@@ -38,7 +38,13 @@ router.post('/verify-passcode', async (req, res) => {
  */
 router.post('/register', async (req, res) => {
   try {
-    const { idToken, passcode } = req.body;
+    const { idToken, passcode, displayName } = req.body;
+
+    console.log('📝 Registration request received:', { 
+      hasToken: !!idToken, 
+      hasPasscode: !!passcode,
+      hasDisplayName: !!displayName
+    });
 
     if (!idToken || !passcode) {
       return res.status(400).json({ message: 'ID token and passcode are required' });
@@ -51,12 +57,14 @@ router.post('/register', async (req, res) => {
     // Verify passcode
     const validPasscode = process.env.REGISTRATION_PASSCODE;
     if (passcode !== validPasscode) {
+      console.log('❌ Invalid passcode provided');
       return res.status(401).json({ message: 'Invalid passcode' });
     }
 
     // Check if user already registered
     const userDoc = await db.collection('users').doc(uid).get();
     if (userDoc.exists) {
+      console.log('✅ User already registered');
       return res.json({ 
         message: 'User already registered', 
         user: userDoc.data() 
@@ -66,11 +74,14 @@ router.post('/register', async (req, res) => {
     // Determine if user should be admin
     const isAdmin = decodedToken.email === process.env.ADMIN_EMAIL;
 
+    // Use provided displayName or fallback to Google name or email
+    const finalDisplayName = displayName || decodedToken.name || decodedToken.email.split('@')[0];
+
     // Create user profile in Firestore
     const userData = {
       uid: uid,
       email: decodedToken.email,
-      displayName: decodedToken.name || decodedToken.email.split('@')[0],
+      displayName: finalDisplayName,
       photoURL: decodedToken.picture || null,
       role: isAdmin ? 'admin' : 'user',
       disabled: false,
@@ -80,6 +91,8 @@ router.post('/register', async (req, res) => {
     };
 
     await db.collection('users').doc(uid).set(userData);
+
+    console.log('✅ User registered successfully:', uid);
 
     res.status(201).json({ 
       message: 'Registration successful', 

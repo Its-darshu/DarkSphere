@@ -7,40 +7,46 @@ const PostFeed = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [page, setPage] = useState(1);
+  const [lastDoc, setLastDoc] = useState(null);
   const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
     fetchPosts();
   }, []);
 
-  const fetchPosts = async (pageNum = 1) => {
+  const fetchPosts = async (startAfter = null) => {
     try {
       setLoading(true);
       setError('');
-      const params = { page: pageNum, limit: 20 };
+      const params = { limit: 20 };
+      
+      if (startAfter) {
+        params.startAfter = startAfter;
+      }
 
       const response = await api.get('/api/posts', { params });
       
-      if (pageNum === 1) {
+      if (!startAfter) {
+        // First page
         setPosts(response.data.posts);
       } else {
+        // Append to existing posts
         setPosts(prev => [...prev, ...response.data.posts]);
       }
       
       setHasMore(response.data.hasMore);
-      setPage(pageNum);
+      setLastDoc(response.data.lastDoc);
     } catch (err) {
       console.error('Error fetching posts:', err);
-      // Silently fail - don't show error to user
+      setError('Failed to load posts');
     } finally {
       setLoading(false);
     }
   };
 
   const handleLoadMore = () => {
-    if (!loading && hasMore) {
-      fetchPosts(page + 1);
+    if (!loading && hasMore && lastDoc) {
+      fetchPosts(lastDoc);
     }
   };
 
@@ -56,7 +62,7 @@ const PostFeed = () => {
         ))}
       </div>
 
-      {loading && page === 1 && (
+      {loading && posts.length === 0 && (
         <div className="loading-container">
           <div className="spinner"></div>
         </div>
@@ -65,6 +71,12 @@ const PostFeed = () => {
       {!loading && posts.length === 0 && (
         <div className="empty-state">
           <p>No posts yet. Be the first to share something!</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="error-message">
+          <p>{error}</p>
         </div>
       )}
 

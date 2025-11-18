@@ -22,7 +22,12 @@ app.use(helmet());
 
 // CORS configuration
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    process.env.CORS_ORIGIN
+  ].filter(Boolean),
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -55,7 +60,7 @@ const authLimiter = rateLimit({
 app.use('/api/auth/', authLimiter);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
@@ -98,10 +103,17 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    process.env.CORS_ORIGIN
+  ].filter(Boolean).join(', ');
+  
   console.log(`\n🚀 DarkSphere Backend Server`);
   console.log(`📡 Running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 CORS enabled for: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`);
+  console.log(`🔗 CORS enabled for: ${allowedOrigins}`);
   console.log(`\n✅ Server ready!\n`);
 });
 

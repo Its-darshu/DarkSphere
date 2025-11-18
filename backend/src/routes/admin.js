@@ -323,4 +323,149 @@ router.get('/audit', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/passcodes
+ * Get all registration passcodes
+ */
+router.get('/passcodes', async (req, res) => {
+  try {
+    const snapshot = await db.collection('passcodes')
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const now = new Date();
+    const passcodes = snapshot.docs.map(doc => {
+      const data = doc.data();
+      const expiresAt = data.expiresAt.toDate();
+      const isExpired = now > expiresAt;
+
+      return {
+        id: doc.id,
+        ...data,
+        isExpired
+      };
+    });
+
+    res.json({ passcodes });
+  } catch (error) {
+    console.error('Error fetching passcodes:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * POST /api/admin/passcodes
+ * Create a new registration passcode
+ */
+router.post('/passcodes', async (req, res) => {
+  try {
+    const { type = 'user', customPasscode } = req.body;
+
+    // Validate type
+    if (!['user', 'admin'].includes(type)) {
+      return res.status(400).json({ message: 'Type must be "user" or "admin"' });
+    }
+
+    // Generate passcode (use custom or generate random)
+    const passcode = customPasscode || generateRandomPasscode();
+
+    // Check if passcode already exists
+    const existingPasscode = await db.collection('passcodes')
+      .where('passcode', '==', passcode)
+      .where('isActive', '==', true)
+      .get();
+
+    if (!existingPasscode.empty) {
+      return res.status(400).json({ message: 'This passcode already exists' });
+    }
+
+    // Set expiration date (5 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 5);
+
+    // Create passcode document
+    const passcodeData = {
+      passcode,
+      type,
+      isActive: true,
+      usedBy: null,
+      createdBy: req.user.uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      expiresAt: admin.firestore.Timestamp.fromDate(expiresAt)
+    };
+
+    const docRef = await db.collection('passcodes').add(passcodeData);
+
+    // Log action
+    await db.collection('audit_logs').add({
+      adminUid: req.user.uid,
+      action: 'passcode_created',
+      targetType: 'passcode',
+      targetId: docRef.id,
+      details: { type, passcode },
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.status(201).json({
+      message: 'Passcode created successfully',
+      passcode: {
+        id: docRef.id,
+        ...passcodeData,
+        isExpired: false
+      }
+    });
+  } catch (error) {
+    console.error('Error creating passcode:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * DELETE /api/admin/passcodes/:id
+ * Deactivate a registration passcode
+ */
+router.delete('/passcodes/:id', async (req, res) => {
+  try {
+    const passcodeDoc = await db.collection('passcodes').doc(req.params.id).get();
+
+    if (!passcodeDoc.exists) {
+      return res.status(404).json({ message: 'Passcode not found' });
+    }
+
+    // Mark as inactive
+    await db.collection('passcodes').doc(req.params.id).update({
+      isActive: false,
+      deactivatedBy: req.user.uid,
+      deactivatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Log action
+    await db.collection('audit_logs').add({
+      adminUid: req.user.uid,
+      action: 'passcode_deactivated',
+      targetType: 'passcode',
+      targetId: req.params.id,
+      details: { passcode: passcodeDoc.data().passcode },
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ message: 'Passcode deactivated successfully' });
+  } catch (error) {
+    console.error('Error deactivating passcode:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+/**
+ * Helper function to generate random passcode
+ */
+function generateRandomPasscode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let passcode = '';
+  for (let i = 0; i < 12; i++) {
+    passcode += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return passcode;
+}
+
 module.exports = router;

@@ -22,16 +22,15 @@ router.get('/', verifyToken, async (req, res) => {
       featured 
     } = req.query;
 
-    let query = db.collection('posts')
-      .where('approved', '==', true)
-      .orderBy('createdAt', 'desc');
+    // Build query - start with just ordering by createdAt (descending)
+    let query = db.collection('posts').orderBy('createdAt', 'desc');
 
-    // Filter by category
+    // Filter by category if provided and not 'all'
     if (category && category !== 'all') {
       query = query.where('category', '==', category);
     }
 
-    // Filter featured posts
+    // Filter featured posts if requested
     if (featured === 'true') {
       query = query.where('featured', '==', true);
     }

@@ -26,6 +26,8 @@ export const AuthProvider = ({ children }) => {
   // Listen to Firebase auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('🔐 Auth state changed:', firebaseUser ? 'User signed in' : 'User signed out');
+      
       if (firebaseUser) {
         try {
           // Get Firebase ID token
@@ -36,27 +38,37 @@ export const AuthProvider = ({ children }) => {
           const response = await api.post('/api/auth/verify-token', {
             idToken: token
           });
+          
+          console.log('✅ User verified with backend:', response.data.user);
           setCurrentUser(firebaseUser);
           setUserProfile(response.data.user);
           setError(null);
+          setLoading(false);
         } catch (err) {
           console.error('Error verifying user:', err);
           if (err.response?.status === 404) {
-            // User not registered yet
+            // User not registered yet - this should trigger passcode modal
+            console.log('⚠️ User not registered - showing passcode modal');
             setCurrentUser(firebaseUser);
             setUserProfile(null);
+            setError(null);
+            setLoading(false);
           } else {
+            console.error('❌ Auth error:', err.response?.data?.message);
             setError(err.response?.data?.message || 'Authentication failed');
             await firebaseSignOut(auth);
             localStorage.removeItem('firebaseToken');
+            setCurrentUser(null);
+            setUserProfile(null);
+            setLoading(false);
           }
         }
       } else {
         setCurrentUser(null);
         setUserProfile(null);
         localStorage.removeItem('firebaseToken');
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return unsubscribe;
