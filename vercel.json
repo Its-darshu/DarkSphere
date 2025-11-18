@@ -1,5 +1,5 @@
 {
-  "buildCommand": "sh build.sh",
+  "buildCommand": "sh -c 'cd frontend && npm install && npm run build'",
   "outputDirectory": "frontend/dist",
   "rewrites": [
     {
