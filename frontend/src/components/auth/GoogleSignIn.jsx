@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import './GoogleSignIn.css';
 
-const GoogleSignIn = ({ onSuccess }) => {
+const GoogleSignIn = () => {
   const { signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -12,7 +12,7 @@ const GoogleSignIn = ({ onSuccess }) => {
       setLoading(true);
       setError('');
       await signInWithGoogle();
-      if (onSuccess) onSuccess();
+      // User will be automatically registered and redirected via AuthContext
     } catch (err) {
       console.error('Sign in error:', err);
       setError('Failed to sign in with Google. Please try again.');

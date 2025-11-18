@@ -35,33 +35,48 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('firebaseToken', token);
 
           // Verify with backend and get user profile
-          const response = await api.post('/api/auth/verify-token', {
-            idToken: token
-          });
-          
-          console.log('✅ User verified with backend:', response.data.user);
-          setCurrentUser(firebaseUser);
-          setUserProfile(response.data.user);
-          setError(null);
-          setLoading(false);
-        } catch (err) {
-          console.error('Error verifying user:', err);
-          if (err.response?.status === 404) {
-            // User not registered yet - this should trigger passcode modal
-            console.log('⚠️ User not registered - showing passcode modal');
+          let response;
+          try {
+            response = await api.post('/api/auth/verify-token', {
+              idToken: token
+            });
+            console.log('✅ User verified with backend:', response.data.user);
             setCurrentUser(firebaseUser);
-            setUserProfile(null);
+            setUserProfile(response.data.user);
             setError(null);
             setLoading(false);
-          } else {
-            console.error('❌ Auth error:', err.response?.data?.message);
-            setError(err.response?.data?.message || 'Authentication failed');
-            await firebaseSignOut(auth);
-            localStorage.removeItem('firebaseToken');
-            setCurrentUser(null);
-            setUserProfile(null);
-            setLoading(false);
+          } catch (err) {
+            // If user not found (404), automatically register them
+            if (err.response?.status === 404) {
+              console.log('⚠️ User not registered - auto-registering...');
+              try {
+                // Auto-register user without passcode
+                response = await api.post('/api/auth/register', {
+                  idToken: token,
+                  displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User'
+                });
+                console.log('✅ User auto-registered:', response.data.user);
+                setCurrentUser(firebaseUser);
+                setUserProfile(response.data.user);
+                setError(null);
+                setLoading(false);
+              } catch (regErr) {
+                console.error('❌ Auto-registration error:', regErr);
+                setError(regErr.response?.data?.message || 'Registration failed');
+                setLoading(false);
+              }
+            } else {
+              throw err;
+            }
           }
+        } catch (err) {
+          console.error('❌ Auth error:', err.response?.data?.message);
+          setError(err.response?.data?.message || 'Authentication failed');
+          await firebaseSignOut(auth);
+          localStorage.removeItem('firebaseToken');
+          setCurrentUser(null);
+          setUserProfile(null);
+          setLoading(false);
         }
       } else {
         setCurrentUser(null);
@@ -86,43 +101,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const registerWithPasscode = async (passcode, displayName) => {
-    try {
-      setError(null);
-      
-      if (!currentUser) {
-        throw new Error('No authenticated user');
-      }
-
-      // Get fresh token
-      const token = await currentUser.getIdToken(true);
-      localStorage.setItem('firebaseToken', token);
-
-      // Register with backend
-      const response = await api.post('/api/auth/register', {
-        idToken: token,
-        passcode,
-        displayName
-      });
-
-      setUserProfile(response.data.user);
-      return response.data;
-    } catch (err) {
-      console.error('Registration error:', err);
-      setError(err.response?.data?.message || 'Registration failed');
-      throw err;
-    }
-  };
-
-  const verifyPasscode = async (passcode) => {
-    try {
-      const response = await api.post('/api/auth/verify-passcode', { passcode });
-      return response.data.valid;
-    } catch (err) {
-      console.error('Passcode verification error:', err);
-      return false;
-    }
-  };
 
   const signOut = async () => {
     try {
@@ -152,8 +130,6 @@ export const AuthProvider = ({ children }) => {
     loading,
     error,
     signInWithGoogle,
-    registerWithPasscode,
-    verifyPasscode,
     signOut,
     refreshProfile,
     isAuthenticated: !!currentUser,

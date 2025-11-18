@@ -1,65 +1,30 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcrypt');
 const admin = require('firebase-admin');
 
 // Get Firestore instance
 const db = admin.firestore();
 
 /**
- * POST /api/auth/verify-passcode
- * Verify if passcode is valid
- */
-router.post('/verify-passcode', async (req, res) => {
-  try {
-    const { passcode } = req.body;
-
-    if (!passcode) {
-      return res.status(400).json({ message: 'Passcode is required' });
-    }
-
-    // Check against environment passcode
-    const validPasscode = process.env.REGISTRATION_PASSCODE;
-    
-    if (passcode === validPasscode) {
-      return res.json({ valid: true });
-    }
-
-    return res.status(401).json({ valid: false, message: 'Invalid passcode' });
-  } catch (error) {
-    console.error('Passcode verification error:', error);
-    res.status(500).json({ message: 'Server error during passcode verification' });
-  }
-});
-
-/**
  * POST /api/auth/register
- * Complete user registration after Google Sign-In
+ * Complete user registration after Google Sign-In (no passcode required)
  */
 router.post('/register', async (req, res) => {
   try {
-    const { idToken, passcode, displayName } = req.body;
+    const { idToken, displayName } = req.body;
 
     console.log('📝 Registration request received:', { 
       hasToken: !!idToken, 
-      hasPasscode: !!passcode,
       hasDisplayName: !!displayName
     });
 
-    if (!idToken || !passcode) {
-      return res.status(400).json({ message: 'ID token and passcode are required' });
+    if (!idToken) {
+      return res.status(400).json({ message: 'ID token is required' });
     }
 
     // Verify the Firebase ID token
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
-
-    // Verify passcode
-    const validPasscode = process.env.REGISTRATION_PASSCODE;
-    if (passcode !== validPasscode) {
-      console.log('❌ Invalid passcode provided');
-      return res.status(401).json({ message: 'Invalid passcode' });
-    }
 
     // Check if user already registered
     const userDoc = await db.collection('users').doc(uid).get();
@@ -85,7 +50,6 @@ router.post('/register', async (req, res) => {
       photoURL: decodedToken.picture || null,
       role: isAdmin ? 'admin' : 'user',
       disabled: false,
-      passcodeUsed: await bcrypt.hash(passcode, 10),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       lastActivity: admin.firestore.FieldValue.serverTimestamp()
     };
