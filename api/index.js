@@ -27,9 +27,9 @@ app.use(helmet({ crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: fals
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
-// Log all requests
+// Log all requests - this helps debug what path Vercel is passing
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`, 'Path:', req.path, 'Original URL:', req.originalUrl);
+  console.log(`📥 ${req.method} ${req.url}`, 'Path:', req.path, 'Original URL:', req.originalUrl, 'Base URL:', req.baseUrl);
   next();
 });
 
@@ -55,7 +55,7 @@ app.get('/health', (req, res) => {
 });
 
 // Try to load routes with error handling
-// Mount routes at both /api and root paths to handle different Vercel routing behaviors
+// Mount routes at both paths to handle different Vercel routing behaviors
 try {
   console.log('📂 Loading routes...');
   const authRoutes = require('./routes/auth');
@@ -64,14 +64,14 @@ try {
   const uploadRoutes = require('./routes/upload');
   const adminRoutes = require('./routes/admin');
   
-  // Mount at /api prefix (for Vercel routing)
+  // Mount at /api prefix (in case Vercel passes full path)
   app.use('/api/auth', authRoutes);
   app.use('/api/users', usersRoutes);
   app.use('/api/posts', postsRoutes);
   app.use('/api/upload', uploadRoutes);
   app.use('/api/admin', adminRoutes);
   
-  // Also mount at root (fallback in case Vercel strips /api prefix)
+  // Also mount without /api prefix (in case Vercel strips it)
   app.use('/auth', authRoutes);
   app.use('/users', usersRoutes);
   app.use('/posts', postsRoutes);
@@ -103,4 +103,5 @@ app.use((err, req, res, next) => {
 console.log('✅ API setup complete');
 
 // Export handler for Vercel serverless
+// Vercel expects the default export to be the Express app
 module.exports = app;
