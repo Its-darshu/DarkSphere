@@ -19,6 +19,16 @@ app.use(helmet({ crossOriginEmbedderPolicy: false, crossOriginOpenerPolicy: fals
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 
+// Log all requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
+// Test route
+app.get('/', (req, res) => res.json({ message: 'API is working!' }));
+app.get('/test', (req, res) => res.json({ message: 'Test endpoint working!' }));
+
 // Routes - no /api prefix needed since Vercel routes /api/* here
 app.use('/auth', require('../backend/src/routes/auth'));
 app.use('/users', require('../backend/src/routes/users'));
@@ -31,7 +41,9 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // Errors
 app.use((err, req, res, next) => {
+  console.error('Error:', err);
   res.status(err.status || 500).json({ message: err.message });
 });
 
+// Export handler for Vercel serverless
 module.exports = app;
