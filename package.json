@@ -5,7 +5,7 @@
   "scripts": {
     "setup": "pwsh ./setup.ps1",
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
-    "build": "cd frontend && npm run build",
+    "build": "cd frontend && npm install && npm run build",
     "deploy:rules": "firebase deploy --only firestore:rules,storage"
   },
   "keywords": [
