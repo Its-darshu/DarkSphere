@@ -32,7 +32,7 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
 
 // Public route (redirect if already logged in)
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, isRegistered, loading } = useAuth();
+  const { isAuthenticated, isRegistered, isAdmin, loading } = useAuth();
 
   if (loading) {
     return (
@@ -44,8 +44,11 @@ const PublicRoute = ({ children }) => {
 
   // Redirect if user is authenticated and registered
   if (isAuthenticated && isRegistered) {
-    console.log('🔄 PublicRoute: User authenticated, redirecting to /feed');
-    return <Navigate to="/feed" replace />;
+    console.log('🔄 PublicRoute: User authenticated, redirecting to dashboard');
+    // Redirect admins to admin dashboard, others to feed
+    const redirectPath = isAdmin ? '/admin' : '/feed';
+    console.log('🔄 Redirecting to:', redirectPath);
+    return <Navigate to={redirectPath} replace />;
   }
 
   return children;
