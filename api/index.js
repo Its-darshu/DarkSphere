@@ -29,7 +29,7 @@ app.use(express.json());
 
 // Log all requests
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+  console.log(`${req.method} ${req.url}`, 'Path:', req.path, 'Original URL:', req.originalUrl);
   next();
 });
 
@@ -55,18 +55,30 @@ app.get('/health', (req, res) => {
 });
 
 // Try to load routes with error handling
+// Mount routes at both /api and root paths to handle different Vercel routing behaviors
 try {
   console.log('📂 Loading routes...');
-  app.use('/auth', require('./routes/auth'));
-  console.log('✅ Auth routes loaded');
-  app.use('/users', require('./routes/users'));
-  console.log('✅ Users routes loaded');
-  app.use('/posts', require('./routes/posts'));
-  console.log('✅ Posts routes loaded');
-  app.use('/upload', require('./routes/upload'));
-  console.log('✅ Upload routes loaded');
-  app.use('/admin', require('./routes/admin'));
-  console.log('✅ Admin routes loaded');
+  const authRoutes = require('./routes/auth');
+  const usersRoutes = require('./routes/users');
+  const postsRoutes = require('./routes/posts');
+  const uploadRoutes = require('./routes/upload');
+  const adminRoutes = require('./routes/admin');
+  
+  // Mount at /api prefix (for Vercel routing)
+  app.use('/api/auth', authRoutes);
+  app.use('/api/users', usersRoutes);
+  app.use('/api/posts', postsRoutes);
+  app.use('/api/upload', uploadRoutes);
+  app.use('/api/admin', adminRoutes);
+  
+  // Also mount at root (fallback in case Vercel strips /api prefix)
+  app.use('/auth', authRoutes);
+  app.use('/users', usersRoutes);
+  app.use('/posts', postsRoutes);
+  app.use('/upload', uploadRoutes);
+  app.use('/admin', adminRoutes);
+  
+  console.log('✅ All routes loaded (mounted at both /api/* and /*)');
 } catch (error) {
   console.error('❌ Error loading routes:', error);
 }
