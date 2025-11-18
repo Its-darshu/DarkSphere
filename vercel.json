@@ -1,7 +1,6 @@
 {
-  "buildCommand": "npm install --prefix ./frontend && npm run build --prefix ./frontend",
-  "outputDirectory": "./frontend/dist",
-  "installCommand": "npm install",
+  "buildCommand": "bash build.sh",
+  "outputDirectory": "frontend/dist",
   "rewrites": [
     {
       "source": "/api/:path*",
