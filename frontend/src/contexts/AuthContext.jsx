@@ -45,7 +45,9 @@ export const AuthProvider = ({ children }) => {
             setUserProfile(response.data.user);
             setError(null);
             setLoading(false);
+            console.log('✅ Auth state updated - isAuthenticated:', !!firebaseUser, 'isRegistered:', !!response.data.user);
           } catch (err) {
+            console.error('❌ Verify token error:', err.response?.status, err.response?.data || err.message);
             // If user not found (404), automatically register them
             if (err.response?.status === 404) {
               console.log('⚠️ User not registered - auto-registering...');
@@ -60,8 +62,9 @@ export const AuthProvider = ({ children }) => {
                 setUserProfile(response.data.user);
                 setError(null);
                 setLoading(false);
+                console.log('✅ Auth state updated - isAuthenticated:', !!firebaseUser, 'isRegistered:', !!response.data.user);
               } catch (regErr) {
-                console.error('❌ Auto-registration error:', regErr);
+                console.error('❌ Auto-registration error:', regErr.response?.status, regErr.response?.data || regErr.message);
                 setError(regErr.response?.data?.message || 'Registration failed');
                 setLoading(false);
               }

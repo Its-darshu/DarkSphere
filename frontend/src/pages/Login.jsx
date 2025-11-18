@@ -6,15 +6,27 @@ import './Login.css';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, isRegistered } = useAuth();
+  const { isAuthenticated, isRegistered, loading } = useAuth();
 
   useEffect(() => {
+    // Wait for loading to complete before checking auth state
+    if (loading) {
+      console.log('⏳ Login: Still loading auth state...');
+      return;
+    }
+    
+    console.log('🔍 Login: Auth state check -', { isAuthenticated, isRegistered, loading });
+    
     // If user is authenticated and registered, redirect to feed
     if (isAuthenticated && isRegistered) {
-      console.log('✅ User authenticated - redirecting to feed');
-      navigate('/feed');
+      console.log('✅ Login: User authenticated and registered - redirecting to feed');
+      // Use setTimeout to ensure state is fully updated
+      const timer = setTimeout(() => {
+        navigate('/feed', { replace: true });
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isRegistered, navigate]);
+  }, [isAuthenticated, isRegistered, loading, navigate]);
 
   return (
     <div className="login-page">

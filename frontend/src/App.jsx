@@ -42,7 +42,9 @@ const PublicRoute = ({ children }) => {
     );
   }
 
+  // Redirect if user is authenticated and registered
   if (isAuthenticated && isRegistered) {
+    console.log('🔄 PublicRoute: User authenticated, redirecting to /feed');
     return <Navigate to="/feed" replace />;
   }
 
