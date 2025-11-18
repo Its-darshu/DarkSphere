@@ -29,12 +29,12 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => res.json({ message: 'API is working!' }));
 app.get('/test', (req, res) => res.json({ message: 'Test endpoint working!' }));
 
-// Routes - no /api prefix needed since Vercel routes /api/* here
-app.use('/auth', require('../backend/src/routes/auth'));
-app.use('/users', require('../backend/src/routes/users'));
-app.use('/posts', require('../backend/src/routes/posts'));
-app.use('/upload', require('../backend/src/routes/upload'));
-app.use('/admin', require('../backend/src/routes/admin'));
+// Routes - using local copies in api directory
+app.use('/auth', require('./routes/auth'));
+app.use('/users', require('./routes/users'));
+app.use('/posts', require('./routes/posts'));
+app.use('/upload', require('./routes/upload'));
+app.use('/admin', require('./routes/admin'));
 
 // Health
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
