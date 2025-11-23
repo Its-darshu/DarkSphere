@@ -58,11 +58,11 @@ app.get('/health', (req, res) => {
 // Mount routes at both paths to handle different Vercel routing behaviors
 try {
   console.log('📂 Loading routes...');
-  const authRoutes = require('./routes/auth');
-  const usersRoutes = require('./routes/users');
-  const postsRoutes = require('./routes/posts');
-  const uploadRoutes = require('./routes/upload');
-  const adminRoutes = require('./routes/admin');
+  const authRoutes = require('../src-api/routes/auth');
+  const usersRoutes = require('../src-api/routes/users');
+  const postsRoutes = require('../src-api/routes/posts');
+  const uploadRoutes = require('../src-api/routes/upload');
+  const adminRoutes = require('../src-api/routes/admin');
   
   // Mount at /api prefix (in case Vercel passes full path)
   app.use('/api/auth', authRoutes);
