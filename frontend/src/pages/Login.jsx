@@ -21,11 +21,7 @@ const Login = () => {
     if (isAuthenticated && isRegistered) {
       const redirectPath = isAdmin ? '/admin' : '/feed';
       console.log('✅ Login: User authenticated and registered - redirecting to', redirectPath);
-      // Use setTimeout to ensure state is fully updated
-      const timer = setTimeout(() => {
-        navigate(redirectPath, { replace: true });
-      }, 100);
-      return () => clearTimeout(timer);
+      navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, isRegistered, isAdmin, loading, navigate]);
 
