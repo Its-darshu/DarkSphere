@@ -1,0 +1,58 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String?    @unique
+  name      String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  jokes     Joke[]
+  votes     Vote[]
+
+  @@map("users")
+}
+
+model Joke {
+  id        String     @id @default(cuid())
+  content   String
+  author    User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  votes     Vote[]
+  dayRank   Int        @default(0) // For sorting by day
+
+  // Tracking for daily reset
+  votesForToday Int     @default(0) // Cache for today's vote count
+  lastScoreUpdate DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([dayRank])
+  @@map("jokes")
+}
+
+model Vote {
+  id        String     @id @default(cuid())
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId    String?
+  joke      Joke       @relation(fields: [jokeId], references: [id], onDelete: Cascade)
+  jokeId    String
+  value     Int        @default(1) // 1 for upvote, -1 for downvote
+  createdAt DateTime   @default(now())
+  voteDate  String     // Format: YYYY-MM-DD for daily grouping
+
+  @@unique([jokeId, userId, voteDate])
+  @@index([jokeId])
+  @@index([voteDate])
+  @@map("votes")
+}
