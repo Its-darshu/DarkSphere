@@ -141,10 +141,18 @@ npx prisma migrate reset
 
 ### Port 5432 Already in Use
 ```bash
-# Kill process using port 5432:
+# Unix/Linux/macOS:
 lsof -ti:5432 | xargs kill -9
 
-# Or use different port in CONNECTION_URL
+# Windows (PowerShell):
+Get-NetTCPConnection -LocalPort 5432 | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }
+
+# Windows (Command Prompt):
+netstat -ano | findstr :5432
+# Note the PID from output, then:
+taskkill /PID <PID> /F
+
+# Or use different port in DATABASE_URL
 ```
 
 ## Development Tips

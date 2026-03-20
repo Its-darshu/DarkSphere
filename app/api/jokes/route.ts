@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
+import { getLocalDateString, getDayBoundariesUTC } from '@/lib/dateUtils'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const date = searchParams.get('date') || getToday()
+    const date = searchParams.get('date') || getLocalDateString()
+
+    // Get UTC boundaries for the requested local date
+    const { startUTC, endUTC } = getDayBoundariesUTC(date)
 
     // Get jokes sorted by votes for today, fresh jokes on top
     const jokes = await prisma.joke.findMany({
       where: {
         createdAt: {
-          gte: new Date(date),
-          lt: new Date(new Date(date).getTime() + 24 * 60 * 60 * 1000),
+          gte: startUTC,
+          lt: endUTC,
         },
       },
       include: {
@@ -62,14 +64,16 @@ export async function POST(request: NextRequest) {
   try {
     const { content, authorName } = await request.json()
 
-    if (!content || content.trim().length === 0) {
+    const trimmedContent = content?.trim() || ''
+
+    if (trimmedContent.length === 0) {
       return NextResponse.json(
         { error: 'Joke content cannot be empty' },
         { status: 400 }
       )
     }
 
-    if (content.length > 500) {
+    if (trimmedContent.length > 500) {
       return NextResponse.json(
         { error: 'Joke must be 500 characters or less' },
         { status: 400 }
@@ -79,19 +83,18 @@ export async function POST(request: NextRequest) {
     // Get or create user
     let user = null
     if (authorName && authorName.trim().length > 0) {
-      user = await prisma.user.upsert({
-        where: { email: `anon-${Date.now()}@local` },
-        update: {},
-        create: {
-          email: `anon-${Date.now()}@local`,
-          name: authorName.substring(0, 50),
+      const anonEmail = `anon-${Date.now()}@local`
+      user = await prisma.user.create({
+        data: {
+          email: anonEmail,
+          name: authorName.substring(0, 50).trim(),
         },
       })
     }
 
     const joke = await prisma.joke.create({
       data: {
-        content,
+        content: trimmedContent,
         authorId: user?.id,
       },
       include: {
@@ -115,6 +118,5 @@ export async function POST(request: NextRequest) {
 }
 
 function getToday(): string {
-  const today = new Date()
-  return today.toISOString().split('T')[0]
+  return getLocalDateString()
 }

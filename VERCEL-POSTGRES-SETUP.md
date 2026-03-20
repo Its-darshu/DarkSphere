@@ -32,7 +32,7 @@ In your Vercel project dashboard:
 2. Click **"Add New"**
 3. **Name**: `DATABASE_URL`
 4. **Value**: Paste the connection string
-5. Click **"Save**
+5. Click **"Save"**
 
 ## Step 5: Redeploy
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface JokeCardProps {
   id: string
@@ -11,6 +11,7 @@ interface JokeCardProps {
   } | null
   score: number
   voteCount: number
+  initialVote?: number | null
   onVote: (jokeId: string, value: number) => Promise<void>
 }
 
@@ -20,10 +21,13 @@ export default function JokeCard({
   author,
   score,
   voteCount,
+  initialVote,
   onVote,
 }: JokeCardProps) {
   const [isVoting, setIsVoting] = useState(false)
-  const [currentVote, setCurrentVote] = useState<number | null>(null)
+  const [currentVote, setCurrentVote] = useState<number | null>(
+    initialVote ?? null
+  )
 
   const handleVote = async (value: number) => {
     if (isVoting) return
@@ -38,6 +42,28 @@ export default function JokeCard({
       console.error('Vote failed:', error)
     } finally {
       setIsVoting(false)
+    }
+  }
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          text: content,
+          title: 'Check out this joke!',
+        })
+      } else if (navigator.clipboard) {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(content)
+        alert('Joke copied to clipboard!')
+      } else {
+        alert('Sharing not supported on this browser')
+      }
+    } catch (error) {
+      // User cancelled share or other error
+      if ((error as Error).name !== 'AbortError') {
+        console.error('Share failed:', error)
+      }
     }
   }
 
@@ -89,12 +115,7 @@ export default function JokeCard({
 
         {/* Share Button */}
         <button
-          onClick={() => {
-            navigator.share?.({
-              text: content,
-              title: 'Check out this joke!',
-            })
-          }}
+          onClick={handleShare}
           className="ml-auto px-3 py-2 rounded bg-slate-700 text-slate-300 hover:bg-slate-600 transition-all"
         >
           <span>📤</span>

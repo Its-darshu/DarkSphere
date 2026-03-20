@@ -5,8 +5,9 @@
       "main": true
     }
   },
-  "env": [
-    "DATABASE_URL"
-  ]
+  "env": {
+    "DATABASE_URL": "@database_url"
+  }
 }
+
 

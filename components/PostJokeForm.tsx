@@ -21,7 +21,9 @@ export default function PostJokeForm({ onSubmit }: PostJokeFormProps) {
 
     setIsLoading(true)
     try {
-      await onSubmit(content, authorName)
+      const trimmedContent = content.trim()
+      const trimmedAuthor = authorName.trim()
+      await onSubmit(trimmedContent, trimmedAuthor)
       setContent('')
       setAuthorName('')
     } catch (error) {

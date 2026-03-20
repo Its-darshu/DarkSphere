@@ -44,7 +44,7 @@ model Joke {
 model Vote {
   id        String     @id @default(cuid())
   user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userId    String?
+  userId    String
   joke      Joke       @relation(fields: [jokeId], references: [id], onDelete: Cascade)
   jokeId    String
   value     Int        @default(1) // 1 for upvote, -1 for downvote

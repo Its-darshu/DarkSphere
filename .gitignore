@@ -25,7 +25,6 @@ firebase-service-account.json
 *.swp
 *.swo
 *~
-.DS_Store
 
 # Prisma
 prisma/migrations/
