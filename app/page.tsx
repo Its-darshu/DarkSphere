@@ -1,202 +1,70 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import PostJokeForm from '@/components/PostJokeForm'
-import JokeCard from '@/components/JokeCard'
-import {
-  getLocalDateString,
-  parseLocalDateString,
-  formatDateForDisplay,
-} from '@/lib/dateUtils'
+import Link from 'next/link'
 
-interface Joke {
-  id: string
-  content: string
-  author?: {
-    id: string
-    name: string | null
-  } | null
-  score: number
-  voteCount: number
-}
-
-export default function Home() {
-  const [jokes, setJokes] = useState<Joke[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedDate, setSelectedDate] = useState(getLocalDateString())
-
-  useEffect(() => {
-    fetchJokes()
-  }, [selectedDate])
-
-  const fetchJokes = async () => {
-    try {
-      setIsLoading(true)
-      const response = await fetch(`/api/jokes?date=${selectedDate}`)
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch jokes: ${response.status} ${response.statusText}`
-        )
-      }
-
-      const data = await response.json()
-      setJokes(data)
-    } catch (error) {
-      console.error('Failed to fetch jokes:', error)
-      setJokes([])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handlePostJoke = async (content: string, authorName: string) => {
-    try {
-      const response = await fetch('/api/jokes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ content, authorName }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to post joke')
-      }
-
-      const newJoke = await response.json()
-      setJokes((prev) => [newJoke, ...prev])
-    } catch (error) {
-      console.error('Failed to post joke:', error)
-      throw error
-    }
-  }
-
-  const handleVote = async (jokeId: string, value: number) => {
-    try {
-      const response = await fetch('/api/votes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jokeId, value }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to vote')
-      }
-
-      const updatedJoke = await response.json()
-
-      // Update the joke in the list
-      setJokes((prevJokes) =>
-        prevJokes
-          .map((j) => (j.id === jokeId ? updatedJoke : j))
-          .sort((a, b) => b.score - a.score || b.voteCount - a.voteCount)
-      )
-    } catch (error) {
-      console.error('Failed to vote:', error)
-      throw error
-    }
-  }
-
-  const handlePreviousDay = () => {
-    const currentDate = parseLocalDateString(selectedDate)
-    currentDate.setDate(currentDate.getDate() - 1)
-    setSelectedDate(getLocalDateString(currentDate))
-  }
-
-  const handleNextDay = () => {
-    const currentDate = parseLocalDateString(selectedDate)
-    currentDate.setDate(currentDate.getDate() + 1)
-    const nextDateString = getLocalDateString(currentDate)
-
-    // Only allow navigating to today or earlier
-    if (nextDateString <= getLocalDateString()) {
-      setSelectedDate(nextDateString)
-    }
-  }
-
-  const isToday = selectedDate === getLocalDateString()
-  const dateLabel = isToday
-    ? 'today'
-    : formatDateForDisplay(parseLocalDateString(selectedDate))
-
+export default function HomePage() {
   return (
-    <main className="min-h-screen py-8">
-      <div className="max-w-2xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-white mb-2">😂 JokeSphere</h1>
-          <p className="text-slate-400">Share and discover the funniest jokes</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
+      <div className="max-w-2xl mx-auto text-center">
+        {/* Logo & Title */}
+        <div className="mb-12">
+          <h1 className="text-6xl font-bold text-white mb-4">🌑 DarkSphere</h1>
+          <p className="text-xl text-slate-300 mb-6">
+            A Twitter-like social platform for sharing your thoughts
+          </p>
+          <p className="text-slate-400">
+            Connect with friends, share your ideas, and join the conversation
+          </p>
         </div>
 
-        {/* Date Navigation */}
-        <div className="flex items-center justify-between mb-6 bg-slate-800 border border-slate-700 rounded-lg p-3">
-          <button
-            onClick={handlePreviousDay}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition-all"
-          >
-            ← Previous
-          </button>
+        {/* Features */}
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
+            <div className="text-3xl mb-3">💬</div>
+            <h3 className="text-lg font-semibold text-white mb-2">Share Your Thoughts</h3>
+            <p className="text-slate-400 text-sm">
+              Post what's on your mind and express yourself freely
+            </p>
+          </div>
 
-          <span className="text-white font-semibold">
-            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-            })}
-          </span>
+          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
+            <div className="text-3xl mb-3">👥</div>
+            <h3 className="text-lg font-semibold text-white mb-2">Connect</h3>
+            <p className="text-slate-400 text-sm">
+              Follow friends and discover new voices in your community
+            </p>
+          </div>
 
-          <button
-            onClick={handleNextDay}
-            disabled={selectedDate >= getLocalDateString()}
-            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded transition-all"
-          >
-            Next →
-          </button>
+          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6">
+            <div className="text-3xl mb-3">❤️</div>
+            <h3 className="text-lg font-semibold text-white mb-2">Engage</h3>
+            <p className="text-slate-400 text-sm">
+              Like, comment, and retweet to participate in conversations
+            </p>
+          </div>
         </div>
 
-        {/* Post Form */}
-        <PostJokeForm onSubmit={handlePostJoke} />
-
-        {/* Jokes Feed */}
-        <div>
-          {isLoading ? (
-            <div className="text-center py-12">
-              <p className="text-slate-400">Loading jokes...</p>
-            </div>
-          ) : jokes.length === 0 ? (
-            <div className="text-center py-12 bg-slate-800 border border-slate-700 rounded-lg">
-              <p className="text-slate-400 mb-4">No jokes yet for {dateLabel}</p>
-              <p className="text-slate-500 text-sm">
-                {isToday
-                  ? 'Be the first to share a joke!'
-                  : 'No jokes were shared on this day.'}
-              </p>
-            </div>
-          ) : (
-            <div>
-              <div className="mb-4 text-slate-400 text-sm">
-                {jokes.length} joke{jokes.length !== 1 ? 's' : ''} on{' '}
-                {dateLabel}
-              </div>
-              {jokes.map((joke) => (
-                <JokeCard
-                  key={joke.id}
-                  {...joke}
-                  onVote={handleVote}
-                />
-              ))}
-            </div>
-          )}
+        {/* CTA Buttons */}
+        <div className="flex gap-4 justify-center">
+          <Link
+            href="/signup"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
+          >
+            Create Account
+          </Link>
+          <Link
+            href="/signin"
+            className="bg-slate-700 hover:bg-slate-600 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
+          >
+            Sign In
+          </Link>
         </div>
 
         {/* Footer */}
-        <div className="mt-12 text-center text-slate-500 text-sm">
-          <p>Made with ❤️ for joke lovers everywhere</p>
+        <div className="mt-16 text-slate-500 text-sm">
+          <p>Built with Next.js, PostgreSQL, and Supabase</p>
         </div>
       </div>
-    </main>
+    </div>
   )
 }

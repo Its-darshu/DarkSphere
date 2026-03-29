@@ -18,7 +18,7 @@ export function parseLocalDateString(dateString: string): Date {
 }
 
 /**
- * Format a Date object as a readable string (e.g., "Mar 21")
+ * Format a Date object as a readable string (e.g., "Fri, Mar 21")
  */
 export function formatDateForDisplay(date: Date): string {
   return date.toLocaleDateString('en-US', {
@@ -37,12 +37,7 @@ export function getDayBoundariesUTC(localDateString: string): {
   endUTC: Date
 } {
   const localDate = parseLocalDateString(localDateString)
-  // Convert local midnight to UTC
-  const offsetMs = new Date(
-    localDateString + 'T00:00:00'
-  ).getTimezoneOffset() * 60000
-
-  const startUTC = new Date(localDate.getTime() + offsetMs)
+  const startUTC = localDate
   const endUTC = new Date(startUTC.getTime() + 24 * 60 * 60 * 1000)
 
   return { startUTC, endUTC }
