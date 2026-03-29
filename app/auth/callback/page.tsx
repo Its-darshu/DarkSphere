@@ -17,16 +17,7 @@ export default function GoogleCallbackPage() {
         
         if (sessionError) throw sessionError
         
-        if (!data.session) {
-          // Wait for the hash to be processed, or retry mechanism
-          const { data: hashData, error: hashError } = await supabase.auth.getSession()
-          if (!hashData.session) {
-            router.push('/signin')
-            return
-          }
-        }
-
-        const session = data.session || (await supabase.auth.getSession()).data.session
+        const session = data.session
 
         if (session?.access_token) {
           // Send to our backend to sync and set HTTP-only custom cookie
@@ -37,8 +28,9 @@ export default function GoogleCallbackPage() {
           })
 
           const result = await res.json()
-          if (res.ok) {
-            router.push('/feed')
+          if (res.ok && result.username) {
+            // Redirect straight to the user's dashboard/profile
+            router.push(`/profile/${result.username}`)
           } else {
             setError(result.error || 'Failed to sync Google login')
           }
