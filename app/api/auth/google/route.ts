@@ -8,18 +8,23 @@ export async function POST(request: Request) {
     const { token } = await request.json()
 
     if (!token) {
+      console.error('[Google Auth] No token provided')
       return NextResponse.json({ error: 'No token provided' }, { status: 400 })
     }
 
+    console.log('[Google Auth] Verifying token with Supabase...')
     // Verify token with Supabase
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
     if (authError || !user) {
+      console.error('[Google Auth] Invalid token:', authError)
       return NextResponse.json({ error: 'Invalid Google token' }, { status: 401 })
     }
 
+    console.log('[Google Auth] User authenticated:', user.email)
     const email = user.email
     if (!email) {
+      console.error('[Google Auth] No email in user data')
       return NextResponse.json({ error: 'Google account has no email' }, { status: 400 })
     }
 
@@ -29,6 +34,7 @@ export async function POST(request: Request) {
     })
 
     if (!dbUser) {
+      console.log('[Google Auth] Creating new user for:', email)
       // Check if username from email is already taken
       let baseUsername = 'dark_' + Math.floor(Math.random() * 10000)
       
@@ -47,15 +53,20 @@ export async function POST(request: Request) {
           authProvider: 'google',
         },
       })
+      console.log('[Google Auth] Created user:', dbUser.username)
+    } else {
+      console.log('[Google Auth] Existing user:', dbUser.username)
     }
 
     // User is verified, create your custom auth cookie
+    console.log('[Google Auth] Generating auth token...')
     const authToken = generateToken(dbUser.id, dbUser.username)
     await setAuthCookie(authToken)
 
+    console.log('[Google Auth] Success! User:', dbUser.username)
     return NextResponse.json({ success: true, username: dbUser.username })
   } catch (error) {
-    console.error('Google sync error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[Google Auth] Error:', error)
+    return NextResponse.json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }, { status: 500 })
   }
 }

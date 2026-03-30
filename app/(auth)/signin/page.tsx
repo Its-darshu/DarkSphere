@@ -72,9 +72,13 @@ export default function SigninPage() {
           redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
-      if (error) throw error
+      if (error) {
+        console.error('Google OAuth error:', error)
+        throw error
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to initialize Google login')
+      console.error('Google sign-in error:', err)
+      setError(err.message || 'Google Sign-In is not configured. Please set up Google OAuth in Supabase or use username/password login.')
       setLoading(false)
     }
   }

@@ -13,13 +13,19 @@ export default function GoogleCallbackPage() {
 
     const handleAuth = async () => {
       try {
+        console.log('[Callback] Starting auth check...')
         const { data, error: sessionError } = await supabase.auth.getSession()
         
-        if (sessionError) throw sessionError
+        if (sessionError) {
+          console.error('[Callback] Session error:', sessionError)
+          throw sessionError
+        }
         
         const session = data.session
+        console.log('[Callback] Session:', session ? 'Found' : 'Not found')
 
         if (session?.access_token) {
+          console.log('[Callback] Sending token to backend...')
           // Send to our backend to sync and set HTTP-only custom cookie
           const res = await fetch('/api/auth/google', {
             method: 'POST',
@@ -28,20 +34,26 @@ export default function GoogleCallbackPage() {
           })
 
           const result = await res.json()
+          console.log('[Callback] Backend response:', { ok: res.ok, result })
+          
           if (res.ok) {
             // Redirect straight to the user's dashboard/profile
             router.push(`/profile/${result.username}`)
           } else {
             setError(result.error || 'Failed to sync Google login')
           }
+        } else {
+          console.log('[Callback] No access token found')
         }
       } catch (err: any) {
+        console.error('[Callback] Error:', err)
         setError(err.message || 'An error occurred during authentication')
       }
     }
 
     // Set up a listener for the auth event that Supabase triggers when returning from Google
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[Callback] Auth state change:', event, session ? 'Session exists' : 'No session')
       if (event === 'SIGNED_IN' && session) {
         handleAuth()
       }
