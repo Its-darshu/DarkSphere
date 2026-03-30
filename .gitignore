@@ -44,3 +44,5 @@ Thumbs.db
 
 # Backups
 _old_backup/
+VERCEL_ENV_VARIABLES.txt
+.env.vercel
