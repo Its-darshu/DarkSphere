@@ -49,12 +49,12 @@ export default function SigninPage() {
           router.push('/admin')
         } else {
           setLoading(false)
-          router.push('/feed')
+          router.push(`/profile/${userProfile.username}`)
         }
       } else {
         // If profile fetch fails, default to feed
         setLoading(false)
-        router.push('/feed')
+        router.push(data.user?.username ? `/profile/${data.user.username}` : '/feed')
       }
     } catch (err) {
       setError('An error occurred. Please try again.')

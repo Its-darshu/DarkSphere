@@ -10,6 +10,7 @@ interface CurrentUser {
   username: string
   bio?: string | null
   avatarUrl?: string | null
+  hasPassword?: boolean
 }
 
 export default function EditProfilePage() {
@@ -73,6 +74,8 @@ export default function EditProfilePage() {
           <EditProfileForm
             initialBio={user.bio}
             initialAvatarUrl={user.avatarUrl}
+            initialUsername={user.username}
+            hasPassword={user.hasPassword}
             onSuccess={() => {
               router.push('/profile')
             }}

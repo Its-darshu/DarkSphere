@@ -28,7 +28,7 @@ export default function GoogleCallbackPage() {
           })
 
           const result = await res.json()
-          if (res.ok && result.username) {
+          if (res.ok) {
             // Redirect straight to the user's dashboard/profile
             router.push(`/profile/${result.username}`)
           } else {

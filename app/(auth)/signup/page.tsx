@@ -46,9 +46,9 @@ export default function SignupPage() {
         return
       }
 
-      // Success - redirect to feed
+      // Success - redirect to user profile
       setLoading(false)
-      router.push('/feed')
+      router.push(`/profile/${data.user?.username || username}`)
     } catch (err) {
       setError('An error occurred. Please try again.')
       setLoading(false)

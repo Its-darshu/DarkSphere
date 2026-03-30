@@ -22,18 +22,24 @@ function isAdminPath(pathname: string): boolean {
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
+  const token = request.cookies.get('auth-token')?.value
+
   // Allow API routes (they handle their own auth)
   if (pathname.startsWith('/api/')) {
     return NextResponse.next()
   }
 
   // Allow public paths (exact match)
-  if (publicPaths.has(pathname)) {
+  if (publicPaths.has(pathname) || pathname === '/auth/callback') {
+    // If user is already logged in, redirect them away from signin/signup
+    if (token && (pathname === '/signin' || pathname === '/signup' || pathname === '/')) {
+      const user = verifyToken(token)
+      if (user) {
+        return NextResponse.redirect(new URL(`/feed`, request.url)) // Or redirect to dashboard profile
+      }
+    }
     return NextResponse.next()
   }
-
-  // Check for auth token on protected routes
-  const token = request.cookies.get('auth-token')?.value
 
   if (!token) {
     // Redirect to signin if not authenticated

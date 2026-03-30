@@ -30,8 +30,7 @@ export async function POST(request: Request) {
 
     if (!dbUser) {
       // Check if username from email is already taken
-      let baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')
-      if (baseUsername.length < 3) baseUsername = 'user' + baseUsername
+      let baseUsername = 'dark_' + Math.floor(Math.random() * 10000)
       
       let finalUsername = baseUsername
       let counter = 1
@@ -45,6 +44,7 @@ export async function POST(request: Request) {
         data: {
           username: finalUsername,
           email: email,
+          authProvider: 'google',
         },
       })
     }

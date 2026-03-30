@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyToken } from '@/lib/auth'
+import { verifyToken, hashPassword, verifyPassword, generateToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
         bio: true,
         avatarUrl: true,
         role: true,
+        authProvider: true,
+        passwordHash: true,
         createdAt: true,
         _count: {
           select: {
@@ -44,7 +46,13 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json(profile)
+    const { passwordHash, ...profileData } = profile
+    const responseData = {
+      ...profileData,
+      hasPassword: !!passwordHash,
+    }
+
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Error fetching profile:', error)
     return NextResponse.json(
@@ -80,9 +88,39 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    const { bio, avatarUrl } = body
+    const { bio, avatarUrl, username, currentPassword, newPassword } = body
 
     // Validate input
+    if (username !== undefined) {
+      if (typeof username !== 'string' || username.length < 3 || username.length > 20) {
+        return NextResponse.json({ error: 'Username must be between 3 and 20 characters' }, { status: 400 })
+      }
+      const existing = await prisma.user.findUnique({ where: { username } })
+      if (existing && existing.id !== user.userId) {
+        return NextResponse.json({ error: 'Username is already taken' }, { status: 400 })
+      }
+    }
+
+    if (newPassword !== undefined) {
+      if (typeof newPassword !== 'string' || newPassword.length < 6) {
+        return NextResponse.json({ error: 'New password must be at least 6 characters' }, { status: 400 })
+      }
+      
+      const dbUser = await prisma.user.findUnique({ where: { id: user.userId } })
+      
+      if (!dbUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+
+      if (dbUser.passwordHash) {
+        if (!currentPassword) {
+          return NextResponse.json({ error: 'Current password is required to set a new password' }, { status: 400 })
+        }
+        const isPasswordValid = await verifyPassword(currentPassword, dbUser.passwordHash)
+        if (!isPasswordValid) return NextResponse.json({ error: 'Incorrect current password' }, { status: 401 })
+      }
+    }
+
     if (bio !== undefined && typeof bio !== 'string') {
       return NextResponse.json(
         { error: 'Bio must be a string' },
@@ -125,6 +163,8 @@ export async function PATCH(request: NextRequest) {
 
     // Update user profile
     const updateData: any = {}
+    if (username !== undefined) updateData.username = username
+    if (newPassword !== undefined) updateData.passwordHash = await hashPassword(newPassword)
     if (bio !== undefined) {
       updateData.bio = bio.trim() || null
     }
@@ -151,7 +191,20 @@ export async function PATCH(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(updatedUser)
+    const patchResponse = NextResponse.json(updatedUser)
+
+    if (username !== undefined && username !== user.username) {
+      const token = generateToken(updatedUser.id, updatedUser.username)
+      patchResponse.cookies.set('auth-token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7,
+        path: '/',
+      })
+    }
+
+    return patchResponse
   } catch (error) {
     console.error('Error updating profile:', error)
     return NextResponse.json(
