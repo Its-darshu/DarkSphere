@@ -78,6 +78,14 @@ export async function POST(request: Request) {
     return response
   } catch (error) {
     console.error('[Google Auth] Error:', error)
-    return NextResponse.json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }, { status: 500 })
+    console.error('[Google Auth] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('[Google Auth] Error name:', error instanceof Error ? error.name : 'Unknown')
+    console.error('[Google Auth] Error message:', error instanceof Error ? error.message : String(error))
+    
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : String(error),
+      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+    }, { status: 500 })
   }
 }
