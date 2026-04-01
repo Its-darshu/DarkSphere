@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { generateToken, setAuthCookie } from '@/lib/auth'
+import { generateToken } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
 export async function POST(request: Request) {
@@ -61,10 +61,21 @@ export async function POST(request: Request) {
     // User is verified, create your custom auth cookie
     console.log('[Google Auth] Generating auth token...')
     const authToken = generateToken(dbUser.id, dbUser.username)
-    await setAuthCookie(authToken)
+    
+    // Create response with user data
+    const response = NextResponse.json({ success: true, username: dbUser.username })
+    
+    // Set auth cookie on the response
+    response.cookies.set('auth-token', authToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    })
 
     console.log('[Google Auth] Success! User:', dbUser.username)
-    return NextResponse.json({ success: true, username: dbUser.username })
+    return response
   } catch (error) {
     console.error('[Google Auth] Error:', error)
     return NextResponse.json({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }, { status: 500 })
